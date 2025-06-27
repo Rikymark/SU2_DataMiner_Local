@@ -37,7 +37,7 @@ prop_cycle = plt.rcParams["axes.prop_cycle"]
 colors = prop_cycle.by_key()['color']
 
 from Common.DataDrivenConfig import Config_FGM
-from Common.Properties import DefaultSettings_FGM, FGMVars
+from Common.Properties import DefaultSettings_FGM, FGMVars, FGMPlotSymbols
 
 class FlameletConcatenator:
     """Read, regularize, and concatenate flamelet data for MLP training or LUT generation.
