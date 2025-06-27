@@ -1361,12 +1361,12 @@ class PlotHPOResults:
         
             axs[i, 0].plot(pareto_scores, pareto_costs, 'ko-',markersize=10)
             axs[i, 0].plot(pareto_scores[i],pareto_costs[i], 'ro',markersize=12)
-            axs[i, 0].text(pareto_scores[i],pareto_costs[i], ("Worker_%i/Model_%i" % (worker_idx, model_idx)), color='r')
             axs[i, 0].set_xscale('log')
             axs[i, 0].set_yscale('log')
             axs[i, 0].grid()
             axs[i, 0].set_xlabel(r"Validation score $(\mathcal{L})[-]$")
             axs[i, 0].set_ylabel(r"Cost parameter $(\mathcal{C})[-]$")
+            axs[i, 0].set_title("Worker %i, Model %i" % (worker_idx, model_idx))
             for j in range(len(hidden_layer_architectures[i])):
                 axs[i, 1].plot((j+1)*np.ones(int(hidden_layer_architectures[i][j])), np.arange(int(hidden_layer_architectures[i][j])) - 0.5*hidden_layer_architectures[i][j], 'ko')
             
