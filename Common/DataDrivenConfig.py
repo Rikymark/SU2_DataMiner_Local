@@ -631,8 +631,8 @@ class Config_FGM(Config):
 
     __Le_avg_method = avg_Le_const
     __Le_const_sp:np.ndarray[float] = None 
-    __Le_avg_eq_ratio:float = 0.5
-    __Le_avg_T_unb:float = 300.0
+    __Le_avg_eq_ratio:float = None
+    __Le_avg_T_unb:float = None
 
     def __init__(self, load_file:str=None):
         """Class constructor
@@ -1553,14 +1553,20 @@ class Config_FGM(Config):
                 raise Exception("Reactant temperature should be positive.")
         
         self.__Le_avg_method = avg_Le_const
-        if reactant_temperature == None:
-            T_reactants = 0.5*(self.__T_unb_lower + self.__T_unb_upper)
+        if (reactant_temperature == None):
+            if (self.__Le_avg_T_unb == None):
+                T_reactants = 0.5*(self.__T_unb_lower + self.__T_unb_upper)
+            else:
+                T_reactants = self.__Le_avg_T_unb
         else:
             T_reactants = reactant_temperature 
         self.__Le_avg_T_unb = T_reactants 
 
-        if mixture_status == None:
-            mixture_status_gas = 0.5*(self.__mix_status_lower + self.__mix_status_upper)
+        if (mixture_status == None):
+            if (self.__Le_avg_eq_ratio == None):
+                mixture_status_gas = 0.5*(self.__mix_status_lower + self.__mix_status_upper)
+            else:
+                mixture_status_gas = self.__Le_avg_eq_ratio
         else:
             mixture_status_gas = mixture_status
         self.__Le_avg_eq_ratio = mixture_status_gas
