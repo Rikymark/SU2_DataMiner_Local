@@ -56,6 +56,7 @@ class PVOptimizer:
     _idx_additional_vars:list[int] = []    # Indices of additional variables.
 
     _delta_Y_flamelets:np.ndarray[float] = None # Flamelet species mass fraction increment vector.
+    _Y_filtered:np.ndarray[float] = None # Filtered flamelet species mass fraction solution.
     _progress_vector:np.ndarray[float] = None   # Progress vector values of flamelet data set.
 
 
@@ -660,6 +661,7 @@ class PVOptimizer:
         """
 
         NFlamelets = len(self._Y_flamelets)
+        Y_filtered_arrays = [None] * NFlamelets
         deltaY_arrays = [None] * NFlamelets
         progress_vector = [None] * NFlamelets
 
@@ -672,11 +674,14 @@ class PVOptimizer:
             if any(idx_mon):
                 progress_vector[iFlamelet] = pv_famelet
                 deltaY_arrays[iFlamelet] = deltaY_flamelet
+                Y_filtered_arrays[iFlamelet] = self._Y_flamelets[iFlamelet][idx_mon,:]
 
         deltaY_arrays = [x for x in deltaY_arrays if x is not None]
         progress_vector = [x for x in progress_vector if x is not None]
+        Y_filtered_arrays = [x for x in Y_filtered_arrays if x is not None]
         self._delta_Y_flamelets = np.vstack(tuple((b for b in deltaY_arrays)))
         self._progress_vector = np.vstack(tuple((b for b in progress_vector)))
+        self._Y_filtered = np.vstack(tuple(b for b in Y_filtered_arrays))
         self._delta_Y_flamelets_constraints = np.vstack(tuple((deltaY_arrays[b] for b in np.random.choice(NFlamelets, 10))))
         return 
     
