@@ -65,10 +65,12 @@ activation_function_options = [tf.keras.activations.linear,
 scaler_functions = {"robust":RobustScaler,\
                     "standard":StandardScaler,\
                     "minmax":MinMaxScaler}
+
+loss_function_options:list[str] = ["mean_squared_error", ]
 class MLPTrainer:
     # Base class for flamelet MLP trainer
-    _dt = tf.float32
-    _dt_np = np.float32 
+    _dt = tf.float64
+    _dt_np = np.float64 
 
     _n_epochs:int = DefaultProperties.N_epochs      # Number of epochs to train for.
     _alpha_expo:float = DefaultProperties.init_learning_rate_expo  # Alpha training exponent parameter.
@@ -154,6 +156,8 @@ class MLPTrainer:
     _custom_weights:list[np.ndarray[float]] = None 
     _custom_biases:list[np.ndarray[float]] = None 
     
+    _loss_function:str = "mean_squared_error"
+
     def __init__(self):
         """Initiate MLP trainer object.
         """
@@ -694,7 +698,9 @@ class TensorFlowFit(MLPTrainer):
                     weights_and_biases.append(w)
                     weights_and_biases.append(b)
                 self._model.set_weights(weights_and_biases)
-
+            self._cost_parameter = 0
+            for w in self._weights:
+                self._cost_parameter += np.shape(w)[0] * np.shape(w)[1]
             # Define learning rate schedule and optimizer
             self.SetDecaySteps()
             #self._decay_steps = 1e4
@@ -820,7 +826,7 @@ class CustomTrainer(MLPTrainer):
     """MLP trainer class with full customization of loss functions.
     """
 
-    _dt = tf.float32            # tensor data type used to cast training data.
+    _dt = tf.float64            # tensor data type used to cast training data.
     _trainable_hyperparams:list[tf.Variable]=[] # MLP hyper-parameters to adjust during training.
     _optimizer = None   # optimization algorithm used to adjust the MLP hyper-parameters during training.
     _lr_schedule = None # learning rate decay schedule.
@@ -832,6 +838,9 @@ class CustomTrainer(MLPTrainer):
 
     _include_regularization:bool = False
     _regularization_param:float = 1e-5
+    _loss_function:str = "mean_square_error"
+    _initializer_minval:float = -0.05
+    _initializer_maxval:float = 0.05
 
     def __init__(self):
         MLPTrainer.__init__(self)
@@ -876,7 +885,7 @@ class CustomTrainer(MLPTrainer):
         if self.weights_initializer == "he_uniform":
             initializer = HeUniform()
         elif self.weights_initializer == "random_uniform":
-            initializer = RandomUniform()
+            initializer = RandomUniform(minval=self._initializer_minval, maxval=self._initializer_maxval)
         if self._loaded_custom_weights:
             for i in range(len(self._custom_weights)):
                 if self._loaded_custom_weights:
@@ -1824,6 +1833,10 @@ class TrainMLP:
         self.SynchronizeTrainer()
         return 
     
+    def EvaluateMLP(self, x_in:np.ndarray[float]):
+        self._trainer_direct.GetTrainData()
+        self._trainer_direct.InitializeWeights_and_Biases()
+        return self._trainer_direct.EvaluateMLP(x_in)
     def CommenceTraining(self):
         """Initiate the training process.
         """
