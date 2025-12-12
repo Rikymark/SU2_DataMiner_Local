@@ -20,6 +20,7 @@ class TestCase:
     timeout:float = 120.0 
     comp_threshold:float = 0.0 
     tolerance:float = 1e-12
+    num_decimals:int = 10
     
     def __init__(self, tag_in:str):
           self.tag = tag_in 
@@ -107,8 +108,11 @@ class TestCase:
                             try:
                                 # Only do a relative comparison when the threshold is met.
                                 # This is to prevent large relative differences for very small numbers.
-                                if (abs(float(from_word)) > self.comp_threshold):
-                                    delta = abs( (float(from_word) - float(to_word)) / float(from_word) ) * 100
+                                from_float = float(format(float(from_word), '.%ie' % self.num_decimals))
+                                to_float = float(format(float(to_word), '.%ie' % self.num_decimals))
+
+                                if (abs(from_float) > self.comp_threshold):
+                                    delta = abs( (from_float - to_float) / from_float ) * 100
                                     compare_counter += 1
                                 else:
                                     delta = 0.0
