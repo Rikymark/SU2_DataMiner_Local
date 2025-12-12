@@ -97,6 +97,7 @@ class TestCase:
 
                         from_isfloat = is_float(from_word)
                         to_isfloat = is_float(to_word)
+                        print(from_line[i_word], to_line[i_word])
                         if from_isfloat != to_isfloat:
                             diff = ["ERROR: File entries in " + fromfile + "'" + from_word + "' and '" + to_word + "' in line " + str(i_line+1) + ", word " + str(i_word+1) + " differ."]
                             passed = False 
