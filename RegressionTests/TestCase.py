@@ -84,16 +84,16 @@ class TestCase:
                 for i_line in range(0, len(fromlines)):
                     if passed == False: break 
 
-                    from_line = fromlines[i_line].split(',')
-                    to_line = tolines[i_line].split(',')
+                    from_line = fromlines[i_line].strip().split(',')
+                    to_line = tolines[i_line].strip().split(',')
                     if len(from_line) != len(to_line):
                         diff = ["ERROR: Number of words in file " + fromfile + "line " + str(i_line + 1) + " differ."]
                         passed = False 
                         break 
 
                     for i_word in range(len(from_line)):
-                        from_word = from_line[i_word].strip()
-                        to_word = to_line[i_word].strip()
+                        from_word = from_line[i_word]
+                        to_word = to_line[i_word]
 
                         from_isfloat = is_float(from_word)
                         to_isfloat = is_float(to_word)
@@ -103,7 +103,7 @@ class TestCase:
                             delta = 0.0 
                             max_delta = "not applicable"
                             break 
-                        if from_isfloat:
+                        if from_isfloat and to_isfloat:
                             try:
                                 # Only do a relative comparison when the threshold is met.
                                 # This is to prevent large relative differences for very small numbers.
@@ -119,7 +119,6 @@ class TestCase:
                             except ZeroDivisionError:
                                 ignore_counter += 1
                                 continue
-                        # Compare non-floats
                         else:
                             delta = 0.0
                             compare_counter += 1
@@ -130,6 +129,7 @@ class TestCase:
                                 break
 
                         if delta > self.tolerance:
+                            print("hi")
                             diff = ["ERROR: File entries '" + from_word + "' and '" + to_word + "' in line " + str(i_line+1) + ", word " + str(i_word+1) + " differ."]
                             passed = False
                             break
