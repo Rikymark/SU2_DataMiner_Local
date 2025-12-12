@@ -84,16 +84,16 @@ class TestCase:
                 for i_line in range(0, len(fromlines)):
                     if passed == False: break 
 
-                    from_line = fromlines[i_line].split()
-                    to_line = tolines[i_line].split()
+                    from_line = fromlines[i_line].split(',')
+                    to_line = tolines[i_line].split(',')
                     if len(from_line) != len(to_line):
                         diff = ["ERROR: Number of words in file " + fromfile + "line " + str(i_line + 1) + " differ."]
                         passed = False 
                         break 
 
                     for i_word in range(len(from_line)):
-                        from_word = from_line[i_word].strip().strip(',')
-                        to_word = to_line[i_word].strip().strip(',')
+                        from_word = from_line[i_word].strip()
+                        to_word = to_line[i_word].strip()
 
                         from_isfloat = is_float(from_word)
                         to_isfloat = is_float(to_word)
