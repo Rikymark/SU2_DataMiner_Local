@@ -138,6 +138,7 @@ class MLPTrainer:
     history_epochs = []
     history_loss = []
     val_loss_history = []
+    train_loss_history = []
     history_learningrate = []
 
     _stagnation_tolerance:float = 1e-11 
@@ -1329,11 +1330,11 @@ class PhysicsInformedTrainer(CustomTrainer):
     
     @tf.function
     def update_lambda(self, grads_direct, grads_ub, val_lambda_old):
-        max_grad_direct = 0.0
+        max_grad_direct = tf.constant(0.0, dtype=self._dt)
         for g in grads_direct:
             max_grad_direct = tf.maximum(max_grad_direct, tf.reduce_max(tf.abs(g)))
 
-        mean_grad_ub = 0.0
+        mean_grad_ub = tf.constant(0.0, dtype=self._dt)
         for g_ub in grads_ub:
             mean_grad_ub += val_lambda_old * tf.reduce_mean(tf.abs(g_ub))
         mean_grad_ub /= len(self._weights)
@@ -1341,7 +1342,7 @@ class PhysicsInformedTrainer(CustomTrainer):
         lambda_prime = max_grad_direct / (mean_grad_ub + 1e-7)
         val_lambda_new = 0.9 * val_lambda_old + 0.1 * lambda_prime
         if tf.math.is_nan(val_lambda_new):
-            val_lambda_new = 1.0
+            val_lambda_new = tf.constant(1.0,dtype=self._dt)
         return val_lambda_new
 
     def CollectPIVars(self):
