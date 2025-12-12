@@ -97,14 +97,13 @@ class TestCase:
 
                         from_isfloat = is_float(from_word)
                         to_isfloat = is_float(to_word)
-                        print(from_isfloat, to_isfloat)
                         if from_isfloat != to_isfloat:
                             diff = ["ERROR: File entries in " + fromfile + "'" + from_word + "' and '" + to_word + "' in line " + str(i_line+1) + ", word " + str(i_word+1) + " differ."]
                             passed = False 
                             delta = 0.0 
                             max_delta = "not applicable"
                             break 
-                        if from_isfloat:
+                        if from_isfloat and to_isfloat:
                             try:
                                 # Only do a relative comparison when the threshold is met.
                                 # This is to prevent large relative differences for very small numbers.
@@ -120,7 +119,6 @@ class TestCase:
                             except ZeroDivisionError:
                                 ignore_counter += 1
                                 continue
-                        # Compare non-floats
                         else:
                             delta = 0.0
                             compare_counter += 1
@@ -131,6 +129,7 @@ class TestCase:
                                 break
 
                         if delta > self.tolerance:
+                            print("hi")
                             diff = ["ERROR: File entries '" + from_word + "' and '" + to_word + "' in line " + str(i_line+1) + ", word " + str(i_word+1) + " differ."]
                             passed = False
                             break
