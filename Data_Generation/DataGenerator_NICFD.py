@@ -166,9 +166,6 @@ class DataGenerator_CoolProp(DataGenerator_Base):
         
         X_range = (X_min - X_max) * np.cos(np.linspace(0, 0.5*np.pi, self.__Np_X)) + X_max
         Y_range = np.linspace(Y_min, Y_max, self.__Np_Y)
-
-        print(",".join("%+.6e" % f for f in X_range[::10]))
-        print(",".join("%+.6e" % f for f in Y_range[::10]))
         
         self.__X_grid, self.__Y_grid = np.meshgrid(X_range, Y_range)
         return 
@@ -509,7 +506,7 @@ class DataGenerator_CoolProp(DataGenerator_Base):
         #np.random.shuffle(full_data)
         full_data_n = full_data.copy()
         np.random.shuffle(full_data_n)
-        
+        print(full_data[0,:])
         # Define number of training and test data points.
         Np_full = np.shape(full_data_n)[0]
         Np_train = int(self.GetTrainFraction()*Np_full)
