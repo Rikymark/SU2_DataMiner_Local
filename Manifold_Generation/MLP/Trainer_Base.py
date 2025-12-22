@@ -1016,7 +1016,7 @@ class CustomTrainer(MLPTrainer):
         if not os.path.isdir(self._save_dir + "/Model_"+str(self._model_index)):
             os.mkdir(self._save_dir + "/Model_"+str(self._model_index))
         
-        self.Plot_Architecture()
+        #self.Plot_Architecture()
 
         self._cost_parameter = 0
         for w in self._weights:

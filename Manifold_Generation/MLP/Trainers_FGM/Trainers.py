@@ -94,8 +94,8 @@ class Train_FGM_PINN(PhysicsInformedTrainer):
     """
 
     __Config:Config_FGM = None    # FlameletAI configuration class to read output variables and hyper-parameters from.
-    _dt=tf.float32 
-    _dt_np=np.float32
+    _dt=tf.float64 
+    _dt_np=np.float64
     def __init__(self, Config_in:Config_FGM, group_idx:int=0):
         """Class constructor. Initialize a physics-informed trainer object for a given output group.
 
