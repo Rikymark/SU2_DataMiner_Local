@@ -13,6 +13,7 @@ Note: If you specify a working directory using the --workdir option for docker,
 flags=""
 branch=""
 testscript=""
+mlpcppb=""
 workdir=$PWD
 
 export CCACHE_DIR=$workdir/ccache
@@ -27,6 +28,10 @@ if [ "$#" -ne 0 ]; then
                 ;;
             -s)
                     testscript=$2
+                    shift 2
+                ;;
+            -m)
+                    mlpcppb=$3
                     shift 2
                 ;;
             *)
@@ -83,3 +88,13 @@ echo "Running regression tests for $name"
 cd "RegressionTests"
 
 python3 $testscript
+
+cd ../MLPCppwrapper
+git clone https://github.com/EvertBunschoten/MLPCpp.git MLPCpp
+cd MLPCpp 
+git fetch origin
+git checkout $mlpcppb
+cd .. 
+sh install.sh 
+
+python3 test_wrapper.py 
