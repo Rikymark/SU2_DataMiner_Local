@@ -18,8 +18,8 @@ def main():
     fluid_MM.config_dir = "FluidGeneration/MM/"
     fluid_MM.config_file = "config_MM.cfg"
     fluid_MM.exec_command = "./generate_fluid_data.py"
-    fluid_MM.reference_files = ["MLP_data_test_ref.csv"]
-    fluid_MM.test_files = ["fluid_data_test.csv"]
+    fluid_MM.reference_files = ["ref_data.csv"]
+    fluid_MM.test_files = ["fluid_data_full.csv"]
     test_list_NICFD.append(fluid_MM)
 
     consistency_EEoS = TestCase("Consistency check EEoS")
