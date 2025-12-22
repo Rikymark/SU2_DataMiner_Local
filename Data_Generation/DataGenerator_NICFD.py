@@ -124,8 +124,6 @@ class DataGenerator_CoolProp(DataGenerator_Base):
             Tmax = self.fluid.Tmax()
             p_range = np.linspace(pmin, pmax, self.__Np_X)
             T_range = np.linspace(Tmin, Tmax, self.__Np_Y)
-            print(pmin, pmax)
-            print(Tmin, Tmax)
             pp, TT = np.meshgrid(p_range, T_range)
             dd = np.zeros(np.shape(pp))
             uu = np.zeros(np.shape(TT))
@@ -153,9 +151,6 @@ class DataGenerator_CoolProp(DataGenerator_Base):
                 Y_min, Y_max = np.min(uu[idx_valid]), np.max(uu[idx_valid])
                 self.__rho_min, self.__rho_max = X_min, X_max
                 self.__e_min, self.__e_max = Y_min, Y_max
-            print("")
-            print(X_min, X_max)
-            print(Y_min, Y_max)
             self.UpdateConfig()
         else:
             if self.__use_PT:
@@ -171,6 +166,10 @@ class DataGenerator_CoolProp(DataGenerator_Base):
         
         X_range = (X_min - X_max) * np.cos(np.linspace(0, 0.5*np.pi, self.__Np_X)) + X_max
         Y_range = np.linspace(Y_min, Y_max, self.__Np_Y)
+
+        print(",".join("%+.6e" % f for f in X_range[::10]))
+        print(",".join("%+.6e" % f for f in Y_range[::10]))
+        
         self.__X_grid, self.__Y_grid = np.meshgrid(X_range, Y_range)
         return 
     
