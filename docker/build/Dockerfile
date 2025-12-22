@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     git \
     build-essential \
+    swig \
     ccache \ 
     && rm -rf /var/lib/apt/lists/* \
     && update-alternatives --install /usr/bin/python python /usr/bin/python3 10 \

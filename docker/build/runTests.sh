@@ -84,17 +84,17 @@ echo "Done!"
 
 
 name="SU2_DataMiner_$(echo $branch | sed 's/\//_/g')"
-echo "Running regression tests for $name"
-cd "RegressionTests"
 
-python3 $testscript
-
-cd ../MLPCppwrapper
+cd "RegressionTests/MLPCppwrapper"
 git clone https://github.com/EvertBunschoten/MLPCpp.git MLPCpp
 cd MLPCpp 
 git fetch origin
 git checkout $mlpcppb
 cd .. 
 sh install.sh 
+cd ..
 
-python3 test_wrapper.py 
+echo "Running regression tests for $name"
+
+python3 $testscript
+
