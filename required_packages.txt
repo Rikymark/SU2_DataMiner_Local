@@ -1,5 +1,5 @@
 cantera==3.0.1
-CoolProp
+CoolProp==6.6.0
 csvkit
 gmsh
 joblib

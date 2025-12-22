@@ -78,66 +78,73 @@ class TestCase:
                 ignore_counter = 0 
 
                 if len(fromlines) != len(tolines):
-                    diff = ["ERROR: Number of lines in " + fromfile + " and " + tofile + " differ."]
+                    diff = ["ERROR: Number of lines in %s and %s differ (%i vs %i)." % (fromfile, tofile, len(fromlines), len(tolines))]
                     passed = False 
+                else:    
+                    for i_line in range(0, len(fromlines)):
 
-                for i_line in range(0, len(fromlines)):
-                    if passed == False: break 
+                        from_line = fromlines[i_line].strip().split(',')
+                        to_line = tolines[i_line].strip().split(',')
 
-                    from_line = fromlines[i_line].split()
-                    to_line = tolines[i_line].split()
-                    if len(from_line) != len(to_line):
-                        diff = ["ERROR: Number of words in file " + fromfile + "line " + str(i_line + 1) + " differ."]
-                        passed = False 
-                        break 
-
-                    for i_word in range(len(from_line)):
-                        from_word = from_line[i_word].strip().strip(',')
-                        to_word = to_line[i_word].strip().strip(',')
-
-                        from_isfloat = is_float(from_word)
-                        to_isfloat = is_float(to_word)
-                        if from_isfloat != to_isfloat:
-                            diff = ["ERROR: File entries in " + fromfile + "'" + from_word + "' and '" + to_word + "' in line " + str(i_line+1) + ", word " + str(i_word+1) + " differ."]
+                        # Add error if number of entries in the line differ
+                        if len(from_line) != len(to_line):
+                            diff.append("ERROR: Number of words in file %s line %i differ." % (fromfile, (i_line+1)))
                             passed = False 
-                            delta = 0.0 
-                            max_delta = "not applicable"
-                            break 
-                        if from_isfloat:
-                            try:
-                                # Only do a relative comparison when the threshold is met.
-                                # This is to prevent large relative differences for very small numbers.
-                                if (abs(float(from_word)) > self.comp_threshold):
-                                    delta = abs( (float(from_word) - float(to_word)) / float(from_word) ) * 100
-                                    compare_counter += 1
-                                else:
-                                    delta = 0.0
+
+                        # Check entries in each line
+                        for i_word in range(len(from_line)):
+                            from_word = from_line[i_word]
+                            to_word = to_line[i_word]
+
+                            from_isfloat = is_float(from_word)
+                            to_isfloat = is_float(to_word)
+
+                            # One entry is a float and the other is a string
+                            if from_isfloat != to_isfloat:
+                                diff.append("ERROR: File entries in %s \"%s\" and \"%s\" in line %i, word %i differ" % (fromfile, from_word, to_word, (i_line+1), (i_word+1)))
+                                passed = False 
+                                delta = 0.0 
+                                max_delta = "not applicable"
+                            
+                            # Compare floats
+                            elif from_isfloat and to_isfloat:
+                                try:
+                                    # Only do a relative comparison when the threshold is met.
+                                    # This is to prevent large relative differences for very small numbers.
+                                    if (abs(float(from_word)) > self.comp_threshold):
+                                        delta = abs( (float(from_word) - float(to_word)) / float(from_word) ) * 100
+                                        compare_counter += 1
+                                    else:
+                                        delta = 0.0
+                                        ignore_counter += 1
+                                    if is_float(max_delta):
+                                        max_delta = max(max_delta, delta)
+
+                                except ZeroDivisionError:
                                     ignore_counter += 1
+                                    continue
+                            
+                            else:
+                                delta = 0.0
 
-                                max_delta = max(max_delta, delta)
-
-                            except ZeroDivisionError:
-                                ignore_counter += 1
-                                continue
-                        # Compare non-floats
-                        else:
-                            delta = 0.0
-                            compare_counter += 1
-                            if from_word != to_word:
-                                diff = ["ERROR: File entries '" + from_word + "' and '" + to_word + "' in line " + str(i_line+1) + ", word " + str(i_word+1) + " differ."]
+                            # Difference between entries exceeds tolerance
+                            if delta > self.tolerance:
+                                diff.append("ERROR: File entries '" + from_word + "' and '" + to_word + "' in line " + str(i_line+1) + ", word " + str(i_word+1) + " differ.")
                                 passed = False
-                                max_delta = "Not applicable"
-                                break
 
-                        if delta > self.tolerance:
-                            diff = ["ERROR: File entries '" + from_word + "' and '" + to_word + "' in line " + str(i_line+1) + ", word " + str(i_word+1) + " differ."]
-                            passed = False
-                            break
-                
                 if diff == []:
                     passed = True 
                 else:
-                    print(diff)
+                    if len(diff) > 10:
+                        print("Error, more than 10 differences found in %s:" % fromfile)
+                        for d in diff[:10]:
+                            print(d)
+                        print("...")
+                    else:
+                        for d in diff:
+                            print(d)
+                    print("\nTerminal output:")
+                    subprocess.call(["cat", logfilename])
         print('==================== End Test: %s ====================\n'%self.tag)
         sys.stdout.flush()
         os.chdir(workdir)

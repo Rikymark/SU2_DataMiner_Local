@@ -662,22 +662,26 @@ class PVOptimizer:
         NFlamelets = len(self._Y_flamelets)
         deltaY_arrays = [None] * NFlamelets
         progress_vector = [None] * NFlamelets
-
+        Y_arrays = [None] * NFlamelets
         print("Retrieving progress vector data...")
         for iFlamelet in tqdm(range(NFlamelets)):
             otherdata = None 
             if any(self.__additional_variables):
                 otherdata = self.__AddedD_flamelets[iFlamelet]
             idx_mon, pv_famelet, deltaY_flamelet = self.GetFlameletProgressVector(self._Y_flamelets[iFlamelet], otherdata)
+            
             if any(idx_mon):
                 progress_vector[iFlamelet] = pv_famelet
                 deltaY_arrays[iFlamelet] = deltaY_flamelet
+                Y_arrays[iFlamelet] = self._Y_flamelets[iFlamelet][idx_mon,:]
 
         deltaY_arrays = [x for x in deltaY_arrays if x is not None]
         progress_vector = [x for x in progress_vector if x is not None]
+        Y_arrays = [x for x in Y_arrays if x is not None]
         self._delta_Y_flamelets = np.vstack(tuple((b for b in deltaY_arrays)))
         self._progress_vector = np.vstack(tuple((b for b in progress_vector)))
         self._delta_Y_flamelets_constraints = np.vstack(tuple((deltaY_arrays[b] for b in np.random.choice(NFlamelets, 10))))
+        self._Y_flamelets_filtered = np.vstack(tuple(b for b in Y_arrays))
         return 
     
     def GetFlameletProgressVector(self, Y_flamelet, otherdata=None):
@@ -962,7 +966,7 @@ class PVOptimizer_PCA(PVOptimizer):
 
         # Use range scaling to pre-process flamelet data
         scaler = MinMaxScaler()
-        delta_Y_scaled = scaler.fit_transform(self._delta_Y_flamelets)
+        delta_Y_scaled = scaler.fit_transform(self._Y_flamelets_filtered)
 
         # Commence principal component analysis
         pca_transformer.fit_transform(delta_Y_scaled)

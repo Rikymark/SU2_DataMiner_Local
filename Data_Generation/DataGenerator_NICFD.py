@@ -151,7 +151,6 @@ class DataGenerator_CoolProp(DataGenerator_Base):
                 Y_min, Y_max = np.min(uu[idx_valid]), np.max(uu[idx_valid])
                 self.__rho_min, self.__rho_max = X_min, X_max
                 self.__e_min, self.__e_max = Y_min, Y_max
-
             self.UpdateConfig()
         else:
             if self.__use_PT:
@@ -167,6 +166,7 @@ class DataGenerator_CoolProp(DataGenerator_Base):
         
         X_range = (X_min - X_max) * np.cos(np.linspace(0, 0.5*np.pi, self.__Np_X)) + X_max
         Y_range = np.linspace(Y_min, Y_max, self.__Np_Y)
+        
         self.__X_grid, self.__Y_grid = np.meshgrid(X_range, Y_range)
         return 
     
@@ -503,16 +503,20 @@ class DataGenerator_CoolProp(DataGenerator_Base):
         full_data = full_data[~np.isinf(full_data).any(axis=1), :]
         full_data = full_data[~np.isnan(full_data).any(axis=1), :]
         # Shuffle data array.
-        np.random.shuffle(full_data)
-
+        #np.random.shuffle(full_data)
+        full_data_n = full_data.copy()
+        np.random.shuffle(full_data_n)
+        print(CoolP.__version__)
+        # print(",".join("%+.16e" % f for f in full_data[0,:]))
+        # print(np.shape(full_data))
         # Define number of training and test data points.
-        Np_full = np.shape(full_data)[0]
+        Np_full = np.shape(full_data_n)[0]
         Np_train = int(self.GetTrainFraction()*Np_full)
         Np_test = int(self.GetTestFraction()*Np_full)
 
-        train_data = full_data[:Np_train, :]
-        test_data = full_data[Np_train:Np_train+Np_test, :]
-        val_data = full_data[Np_train+Np_test:, :]
+        train_data = full_data_n[:Np_train, :]
+        test_data = full_data_n[Np_train:Np_train+Np_test, :]
+        val_data = full_data_n[Np_train+Np_test:, :]
 
         # Write output data files.
         with open(full_file,"w+") as fid:
