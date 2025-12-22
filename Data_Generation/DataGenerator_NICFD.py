@@ -506,7 +506,8 @@ class DataGenerator_CoolProp(DataGenerator_Base):
         #np.random.shuffle(full_data)
         full_data_n = full_data.copy()
         np.random.shuffle(full_data_n)
-        print(full_data[0,:])
+        print(",".join("%+.16e" % f for f in full_data[0,:]))
+        print(np.shape(full_data))
         # Define number of training and test data points.
         Np_full = np.shape(full_data_n)[0]
         Np_train = int(self.GetTrainFraction()*Np_full)
