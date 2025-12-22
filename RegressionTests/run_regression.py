@@ -10,8 +10,8 @@ def main():
     fluid_air.config_dir = "FluidGeneration/Air/"
     fluid_air.config_file = "config_air.cfg"
     fluid_air.exec_command = "./generate_fluid_data.py"
-    fluid_air.reference_files = ["MLP_data_test_ref.csv"]
-    fluid_air.test_files = ["fluid_data_test.csv"]
+    fluid_air.reference_files = ["ref_data.csv"]
+    fluid_air.test_files = ["fluid_data_full.csv"]
     test_list_NICFD.append(fluid_air)
 
     fluid_MM = TestCase("Fluid_MM")

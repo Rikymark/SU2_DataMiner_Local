@@ -506,16 +506,18 @@ class DataGenerator_CoolProp(DataGenerator_Base):
         full_data = full_data[~np.isinf(full_data).any(axis=1), :]
         full_data = full_data[~np.isnan(full_data).any(axis=1), :]
         # Shuffle data array.
-        np.random.shuffle(full_data)
-
+        #np.random.shuffle(full_data)
+        full_data_n = full_data.copy()
+        np.random.shuffle(full_data_n)
+        
         # Define number of training and test data points.
-        Np_full = np.shape(full_data)[0]
+        Np_full = np.shape(full_data_n)[0]
         Np_train = int(self.GetTrainFraction()*Np_full)
         Np_test = int(self.GetTestFraction()*Np_full)
 
-        train_data = full_data[:Np_train, :]
-        test_data = full_data[Np_train:Np_train+Np_test, :]
-        val_data = full_data[Np_train+Np_test:, :]
+        train_data = full_data_n[:Np_train, :]
+        test_data = full_data_n[Np_train:Np_train+Np_test, :]
+        val_data = full_data_n[Np_train+Np_test:, :]
 
         # Write output data files.
         with open(full_file,"w+") as fid:
