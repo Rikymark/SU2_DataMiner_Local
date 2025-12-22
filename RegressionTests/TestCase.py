@@ -19,7 +19,8 @@ class TestCase:
     exec_command:str 
     timeout:float = 120.0 
     comp_threshold:float = 0.0 
-    tolerance:float = 0.0 
+    tolerance:float = 1e-12
+    num_decimals:int = 10
     
     def __init__(self, tag_in:str):
           self.tag = tag_in 
@@ -132,6 +133,11 @@ class TestCase:
                                 diff.append("ERROR: File entries '" + from_word + "' and '" + to_word + "' in line " + str(i_line+1) + ", word " + str(i_word+1) + " differ.")
                                 passed = False
 
+                        if delta > self.tolerance:
+                            diff = ["ERROR: File entries '" + from_word + "' and '" + to_word + "' in line " + str(i_line+1) + ", word " + str(i_word+1) + " differ."]
+                            passed = False
+                            break
+                
                 if diff == []:
                     passed = True 
                 else:
