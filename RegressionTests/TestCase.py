@@ -143,6 +143,8 @@ class TestCase:
                     else:
                         for d in diff:
                             print(d)
+                    print("\nTerminal output:")
+                    subprocess.call(["cat", logfilename])
         print('==================== End Test: %s ====================\n'%self.tag)
         sys.stdout.flush()
         os.chdir(workdir)
