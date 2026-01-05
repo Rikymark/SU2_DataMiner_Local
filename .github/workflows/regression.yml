@@ -27,4 +27,9 @@ jobs:
         uses: docker://ghcr.io/evertbunschoten/su2dataminer_test:latest
         with:
           args: -b ${{ github.ref }} -s run_regression.py
+
+      - name: MLPCpp integration tests
+        uses: docker://ghcr.io/evertbunschoten/su2dataminer_test:latest
+        with:
+          args: -b ${{ github.ref }} -s MLPCpp_tests.py -m main
       
