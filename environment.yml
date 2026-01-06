@@ -22,3 +22,6 @@ dependencies:
 - time
 - tk
 - tqdm
+- pygad
+- paretoset
+- pymoo
