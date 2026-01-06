@@ -30,6 +30,14 @@ def main():
     consistency_EEoS.test_files = ["consistency_check.txt"]
     test_list_NICFD.append(consistency_EEoS)
 
+    consistency_NICFD_PINN = TestCase("PIML training NICFD")
+    consistency_NICFD_PINN.config_dir = "FluidTraining/MM_PINN/"
+    consistency_NICFD_PINN.config_file = ""
+    consistency_NICFD_PINN.exec_command = "./train_MLP.py"
+    consistency_NICFD_PINN.reference_files = ["SU2_MLP_ref.mlp"]
+    consistency_NICFD_PINN.test_files = ["SU2_MLP.mlp"]
+    test_list_NICFD.append(consistency_NICFD_PINN)
+
     hydrogen_flamelet = TestCase("H2_Flamelet")
     hydrogen_flamelet.config_dir = "FlameletGeneration/Adiabatic_H2/"
     hydrogen_flamelet.config_file = "adiabatic_flamelets.cfg"
