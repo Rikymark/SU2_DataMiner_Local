@@ -185,7 +185,7 @@ def write_SU2_MLP(file_out:str, weights:list[np.ndarray], biases:list[np.ndarray
     fid.write("\t".join("%+.16e" % 0 for _ in controlling_vars) + "\n")
 
     for B in biases_for_output:
-        fid.write("\t".join("%+.16e" % float(b) for b in B) + "\n")
+        fid.write("\t".join("%+.16e" % float(b+0.1) for b in B) + "\n")
 
     fid.close()
     return 
