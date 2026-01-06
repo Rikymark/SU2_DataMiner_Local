@@ -1089,6 +1089,8 @@ class TrainMLP_NICFD(TrainMLP):
     """
     __trainer_PINN:Train_Entropic_PINN      # MLP trainer object responsible for training itself.
     _state_vars:list[str] = [EntropicVars.s.name, EntropicVars.T.name, EntropicVars.p.name, EntropicVars.c2.name]
+    __weights_direct:list[np.ndarray[float]] = None 
+    __biases_direct:list[np.ndarray[float]] = None 
 
     def __init__(self, Config_in:Config_NICFD):
         """Define TrainMLP instance and prepare MLP trainer with
@@ -1161,10 +1163,16 @@ class TrainMLP_NICFD(TrainMLP):
     def CommenceTraining(self):
         """Initiate the training process.
         """
-
-        self.PrepareOutputDir()
-
+        self.Train_DF()
+        self.Train_PINN()
         
+
+        fid = open(self.worker_dir + "/current_iter.txt", "w+")
+        fid.write(str(self.current_iter) + "\n")
+        fid.close()
+        return 
+    def Train_DF(self):
+        self.PrepareOutputDir()
         self._trainer_direct.SetMLPFileHeader("MLP_direct")
         self._trainer_direct.Train_MLP()
         super().TrainPostprocessing()
@@ -1174,18 +1182,20 @@ class TrainMLP_NICFD(TrainMLP):
 
         weights_entropy = self._trainer_direct.GetWeights()
         biases_entropy = self._trainer_direct.GetBiases()
-
+        self.__weights_direct = weights_entropy.copy()
+        self.__biases_direct = biases_entropy.copy()
+        return 
+    def Train_PINN(self):
+        self.PrepareOutputDir()
         state_grid_ref = ComputeRhoEGridData(self._Config)
         self.__trainer_PINN.SetStateGrid_ref(state_grid_ref)
         self.__trainer_PINN.SetMLPFileHeader("MLP_PINN")
-        self.__trainer_PINN.SetWeights(weights_entropy)
-        self.__trainer_PINN.SetBiases(biases_entropy)
+        self.__trainer_PINN.InitializeWeights_and_Biases()
+        if (self.__weights_direct) and (self.__biases_direct):
+            self.__trainer_PINN.SetWeights(self.__weights_direct)
+            self.__trainer_PINN.SetBiases(self.__biases_direct)
         self.__trainer_PINN.Train_MLP()
         self.__trainer_PINN.PostProcessing()
-
-        fid = open(self.worker_dir + "/current_iter.txt", "w+")
-        fid.write(str(self.current_iter) + "\n")
-        fid.close()
         return 
     
     def TrainPostprocessing(self):
