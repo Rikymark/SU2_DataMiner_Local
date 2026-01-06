@@ -28,7 +28,7 @@ D.SaveData()
 
 M = TrainMLP_NICFD(C)
 M.SetTrainHardware("CPU",0)
-M.SetNEpochs(100)
+M.SetNEpochs(20)
 M.SetScaler("minmax")
 M.CommenceTraining()
 C.UpdateMLPHyperParams(M)

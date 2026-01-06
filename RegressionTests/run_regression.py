@@ -36,6 +36,7 @@ def main():
     consistency_NICFD_PINN.exec_command = "./train_MLP.py"
     consistency_NICFD_PINN.reference_files = ["SU2_MLP_ref.mlp"]
     consistency_NICFD_PINN.test_files = ["SU2_MLP.mlp"]
+    consistency_NICFD_PINN.timeout=300
     test_list_NICFD.append(consistency_NICFD_PINN)
 
     hydrogen_flamelet = TestCase("H2_Flamelet")

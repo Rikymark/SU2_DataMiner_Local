@@ -1,11 +1,11 @@
-cantera==3.0.1
-CoolProp==6.6.0
+cantera
+CoolProp
 csvkit
 gmsh
 joblib
 keras
 matplotlib
-numpy==1.26.4
+numpy
 pypickle
 pyfiglet
 mkl_random
