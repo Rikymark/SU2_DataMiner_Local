@@ -16,3 +16,4 @@ tk
 tqdm
 pygad
 paretoset
+pymoo
