@@ -1,23 +1,35 @@
 #!/usr/bin/env python3
 
 import os 
-import sys 
-from su2dataminer.manifold import Train_Entropic_PINN
-
+from su2dataminer.manifold import Train_Entropic_PINN,TrainMLP_NICFD
+from su2dataminer.generate_data import DataGenerator_CoolProp
 from Common.DataDrivenConfig import Config_NICFD 
 
-C = Config_NICFD(sys.argv[-1])
+C = Config_NICFD()
+C.SetFluid("MM")
+C.SetEquationOfState("HEOS")
+C.UseAutoRange(True)
+C.UsePTGrid(False)
+C.SetNpDensity(100)
+C.SetNpEnergy(50)
+C.SetAlphaExpo(-1.8269e+00)
+C.SetLRDecay(+9.8959e-01)
+C.SetOutputDir(os.getcwd()+"/")
+C.SetStateVars(["s","T","p","c2"])
+C.SetHiddenLayerArchitecture([10])
+C.SetActivationFunction("exponential")
+C.SetBatchExpo(4)
+C.SaveConfig()
 
-M = Train_Entropic_PINN()
-M.SetTrainFileHeader(os.getcwd()+"/"+C.GetConcatenationFileHeader())
+D = DataGenerator_CoolProp(C)
+D.PreprocessData()
+D.ComputeData()
+D.SaveData()
+
+M = TrainMLP_NICFD(C)
+M.SetTrainHardware("CPU",0)
 M.SetNEpochs(100)
-M.SetHiddenLayers([10])
-M.SetBatchExpo(4)
-M.SetActivationFunction("exponential")
-M.SetVerbose(0)
-M.SetSaveDir(os.getcwd())
-M.SetDeviceIndex(0)
-M.SetModelIndex(0)
-M.InitializeWeights_and_Biases()
-M.CollectVariables()
-M.Train_MLP()
+M.SetScaler("minmax")
+M.CommenceTraining()
+C.UpdateMLPHyperParams(M)
+C.WriteSU2MLP("SU2_MLP")
