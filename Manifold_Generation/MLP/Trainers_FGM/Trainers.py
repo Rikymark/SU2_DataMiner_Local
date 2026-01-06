@@ -94,7 +94,8 @@ class Train_FGM_PINN(PhysicsInformedTrainer):
     """
 
     __Config:Config_FGM = None    # FlameletAI configuration class to read output variables and hyper-parameters from.
-
+    _dt=tf.float64 
+    _dt_np=np.float64
     def __init__(self, Config_in:Config_FGM, group_idx:int=0):
         """Class constructor. Initialize a physics-informed trainer object for a given output group.
 
@@ -387,7 +388,7 @@ class Train_FGM_PINN(PhysicsInformedTrainer):
         :rtype: list[np.ndarray], list[np.ndarray], list[str]
         """
 
-        _, Cp_boundary = GetReferenceData(self._boundary_data_file, x_vars=self._controlling_vars, train_variables=[FGMVars.Cp.name])
+        _, Cp_boundary = GetReferenceData(self._boundary_data_file, x_vars=self._controlling_vars, train_variables=[FGMVars.Cp.name], dtype=self._dt_np)
         projection_array_train, _ = self.__SetEnth_projection()
         T_scale = self._Y_scale[self._train_vars.index(FGMVars.Temperature.name)]
         h_scale = self._X_scale[self._controlling_vars.index(DefaultProperties.name_enth)]
@@ -404,7 +405,7 @@ class Train_FGM_PINN(PhysicsInformedTrainer):
         """
 
         # Extract specific heat and beta_h1 from flamelet data.
-        _, Y_boundary = GetReferenceData(self._boundary_data_file, x_vars=self._controlling_vars, train_variables=[FGMVars.Cp.name, FGMVars.Beta_Enth_Thermal.name])
+        _, Y_boundary = GetReferenceData(self._boundary_data_file, x_vars=self._controlling_vars, train_variables=[FGMVars.Cp.name, FGMVars.Beta_Enth_Thermal.name],dtype=self._dt_np)
         
         Cp_boundary = Y_boundary[:,0]
         Beta_h1_boundary = Y_boundary[:,1]
@@ -681,7 +682,7 @@ class NullMLP(CustomTrainer):
         """
         MLPData_filepath = self._filedata_train
         x_vars = self._controlling_vars
-        X_full, _ = GetReferenceData(MLPData_filepath + "_full.csv", x_vars, [])
+        X_full, _ = GetReferenceData(MLPData_filepath + "_full.csv", x_vars, [],dtype=self._dt_np)
         self.scaler_function_x.fit(X_full)
 
         self._X_scale = self.scaler_function_x.scale_

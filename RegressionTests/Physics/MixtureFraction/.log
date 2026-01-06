@@ -1,0 +1,24 @@
+Generating empty SU2 DataMiner configuration for FGM
+Fuel: H2:1.0 Oxidizer: O2:1.0,N2:3.76 Reaction mechanism: h2o2.yaml
+Mixture fraction according to Cantera (reactants): 1.446752e-02
+Mixture fraction according to SU2 DataMiner (reactants): 1.446752e-02
+Mixture fraction according to Cantera (products): 1.446752e-02
+Mixture fraction according to SU2 DataMiner (products): 1.446752e-02
+Mixture fraction according to Cantera (random mixture): 1.865001e-01
+Mixture fraction according to SU2 DataMiner (random mixture): 1.865001e-01
+Generating empty SU2 DataMiner configuration for FGM
+Fuel: CH4:1.0 Oxidizer: O2:1.0,N2:3.76 Reaction mechanism: gri30.yaml
+Mixture fraction according to Cantera (reactants): 2.837633e-02
+Mixture fraction according to SU2 DataMiner (reactants): 2.837633e-02
+Mixture fraction according to Cantera (products): 2.837633e-02
+Mixture fraction according to SU2 DataMiner (products): 2.837633e-02
+Mixture fraction according to Cantera (random mixture): 4.897720e-01
+Mixture fraction according to SU2 DataMiner (random mixture): 4.897720e-01
+Generating empty SU2 DataMiner configuration for FGM
+Fuel: H2:0.5,CH4:0.5 Oxidizer: O2:1.0,N2:3.76 Reaction mechanism: gri30.yaml
+Mixture fraction according to Cantera (reactants): 2.562606e-02
+Mixture fraction according to SU2 DataMiner (reactants): 2.562606e-02
+Mixture fraction according to Cantera (products): 2.562606e-02
+Mixture fraction according to SU2 DataMiner (products): 2.562606e-02
+Mixture fraction according to Cantera (random mixture): 3.567708e-01
+Mixture fraction according to SU2 DataMiner (random mixture): 3.567708e-01

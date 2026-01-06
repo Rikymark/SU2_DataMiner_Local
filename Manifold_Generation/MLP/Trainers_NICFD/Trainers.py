@@ -48,7 +48,7 @@ import CoolProp.CoolProp as CP
 from Common.DataDrivenConfig import Config_NICFD
 from Common.CommonMethods import GetReferenceData
 from Common.Properties import DefaultSettings_NICFD, EntropicVars
-from Manifold_Generation.MLP.Trainer_Base import MLPTrainer, TensorFlowFit,PhysicsInformedTrainer,TrainMLP
+from Manifold_Generation.MLP.Trainer_Base import MLPTrainer, TensorFlowFit,PhysicsInformedTrainer,TrainMLP,CustomTrainer
 
 LabelPairing = {EntropicVars.s.name:r"Entropy $(s)[J/kg]$",\
                 EntropicVars.T.name:r"Temperature $(T)[K]$",\
@@ -876,6 +876,14 @@ class Train_Entropic_PINN(PhysicsInformedTrainer):
     def EvaluateState(self, X_norm:tf.Tensor):
         return self.TD_Evaluation(X_norm)
     
+    def EvaluateMLP(self, X:np.ndarray[float]):
+        X_norm = tf.Variable(self.scaler_function_x.transform(X))
+        s_norm = self._MLP_Evaluation(X_norm)
+        #s_dim, dsdrhoe, d2sdrho2e2 = self.ComputeEntropyGradients(X_norm)
+        #print(s_dim.numpy()[:10])
+        state = self.EvaluateState(X_norm).numpy()
+        return state 
+    
     @tf.function 
     def ComputeStateError(self, X_label_norm:tf.constant,Y_state_label_norm:tf.constant):
         Y_state_pred = self.EvaluateState(X_label_norm)
@@ -1047,7 +1055,6 @@ class Train_Entropic_Segregated(TensorFlowFit):
         Y_transformed = Y_untransformed.copy()
         Y_transformed[:, idx_dsdrho_e] = dsdrho_transformed
         Y_transformed[:, idx_d2sdrho2] = d2sdrho2_transformed
-
         return Y_transformed
     
     def TransformData_Inv(self, Y_transformed):
@@ -1063,9 +1070,16 @@ class Train_Entropic_Segregated(TensorFlowFit):
         return Y_untransformed
     
     def CustomCallback(self):
-        super().CustomCallback()
+        self._test_score = self._model.evaluate(self._X_test_norm, self._Y_test_norm, verbose=0)[0]
+        # Save SU2 MLP and performance metrics.
+        self.Save_Relevant_Data()
+        # Plot intermediate history trends.
+        self.Plot_and_Save_History()
+        # Error scatter plots for thermodynamic properties.
         self.PlotR2Data()
-        return 
+        self.SaveWeights()
+        return super().CustomCallback()
+    
     def add_additional_header_info(self, fid):
         fid.write("Inverse transform dsdrho_e: -exp(dsdrho_e)\nInverse transform d2sdrho2: exp(d2sdrho2)\n")
         return 
@@ -1075,6 +1089,8 @@ class TrainMLP_NICFD(TrainMLP):
     """
     __trainer_PINN:Train_Entropic_PINN      # MLP trainer object responsible for training itself.
     _state_vars:list[str] = [EntropicVars.s.name, EntropicVars.T.name, EntropicVars.p.name, EntropicVars.c2.name]
+    __weights_direct:list[np.ndarray[float]] = None 
+    __biases_direct:list[np.ndarray[float]] = None 
 
     def __init__(self, Config_in:Config_NICFD):
         """Define TrainMLP instance and prepare MLP trainer with
@@ -1147,10 +1163,16 @@ class TrainMLP_NICFD(TrainMLP):
     def CommenceTraining(self):
         """Initiate the training process.
         """
-
-        self.PrepareOutputDir()
-
+        self.Train_DF()
+        self.Train_PINN()
         
+
+        fid = open(self.worker_dir + "/current_iter.txt", "w+")
+        fid.write(str(self.current_iter) + "\n")
+        fid.close()
+        return 
+    def Train_DF(self):
+        self.PrepareOutputDir()
         self._trainer_direct.SetMLPFileHeader("MLP_direct")
         self._trainer_direct.Train_MLP()
         super().TrainPostprocessing()
@@ -1160,18 +1182,20 @@ class TrainMLP_NICFD(TrainMLP):
 
         weights_entropy = self._trainer_direct.GetWeights()
         biases_entropy = self._trainer_direct.GetBiases()
-
+        self.__weights_direct = weights_entropy.copy()
+        self.__biases_direct = biases_entropy.copy()
+        return 
+    def Train_PINN(self):
+        self.PrepareOutputDir()
         state_grid_ref = ComputeRhoEGridData(self._Config)
         self.__trainer_PINN.SetStateGrid_ref(state_grid_ref)
         self.__trainer_PINN.SetMLPFileHeader("MLP_PINN")
-        self.__trainer_PINN.SetWeights(weights_entropy)
-        self.__trainer_PINN.SetBiases(biases_entropy)
+        self.__trainer_PINN.InitializeWeights_and_Biases()
+        if (self.__weights_direct) and (self.__biases_direct):
+            self.__trainer_PINN.SetWeights(self.__weights_direct)
+            self.__trainer_PINN.SetBiases(self.__biases_direct)
         self.__trainer_PINN.Train_MLP()
         self.__trainer_PINN.PostProcessing()
-
-        fid = open(self.worker_dir + "/current_iter.txt", "w+")
-        fid.write(str(self.current_iter) + "\n")
-        fid.close()
         return 
     
     def TrainPostprocessing(self):

@@ -1,0 +1,15 @@
+__pycache__
+MLPCpp
+MLP_test.mlp 
+config_FGM.cfg
+fluid_data*
+boundary_data*
+freeflame_data
+equilibrium_data
+Model_0
+mlpcppwrapper.o
+mlpcppwrapper.py 
+_mlpcppwrapper.so 
+mlpcppwrapper_wrap.cxx 
+mlpcppwrapper_wrap.o
+

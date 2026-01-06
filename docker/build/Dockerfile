@@ -5,8 +5,10 @@ FROM ubuntu:latest
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
+    python3-tk \
     git \
     build-essential \
+    swig \
     ccache \ 
     && rm -rf /var/lib/apt/lists/* \
     && update-alternatives --install /usr/bin/python python /usr/bin/python3 10 \
@@ -14,7 +16,11 @@ RUN apt-get update && apt-get install -y \
     && echo 'export PATH="/usr/lib/ccache:$PATH"' | tee -a ~/.bashrc \
     && apt-get update \
     && apt-get install -y python3-virtualenv \
-    && apt-get install -y python3.12-venv 
+    && apt-get install -y python3.12-venv \
+    && echo "Setting up python environment..." \
+    && python3 -m venv /home/ubuntu/pyenv \
+    && virtualenv -p /usr/bin/python3 /home/ubuntu/pyenv \
+    && . /home/ubuntu/pyenv/bin/activate 
 
 
 # Copies your code file from your action repository to the filesystem path `/` of the container

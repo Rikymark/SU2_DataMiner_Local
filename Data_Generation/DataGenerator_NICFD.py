@@ -506,7 +506,6 @@ class DataGenerator_CoolProp(DataGenerator_Base):
         #np.random.shuffle(full_data)
         full_data_n = full_data.copy()
         np.random.shuffle(full_data_n)
-        print(CoolP.__version__)
         # print(",".join("%+.16e" % f for f in full_data[0,:]))
         # print(np.shape(full_data))
         # Define number of training and test data points.
@@ -517,7 +516,6 @@ class DataGenerator_CoolProp(DataGenerator_Base):
         train_data = full_data_n[:Np_train, :]
         test_data = full_data_n[Np_train:Np_train+Np_test, :]
         val_data = full_data_n[Np_train+Np_test:, :]
-
         # Write output data files.
         with open(full_file,"w+") as fid:
             fid.write(",".join(v.name for v in all_vars) + "\n")

@@ -56,6 +56,7 @@ class PVOptimizer:
     _idx_additional_vars:list[int] = []    # Indices of additional variables.
 
     _delta_Y_flamelets:np.ndarray[float] = None # Flamelet species mass fraction increment vector.
+    _Y_flamelets_filtered:np.ndarray[float] = None
     _progress_vector:np.ndarray[float] = None   # Progress vector values of flamelet data set.
 
 

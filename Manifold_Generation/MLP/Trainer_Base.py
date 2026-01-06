@@ -65,10 +65,12 @@ activation_function_options = [tf.keras.activations.linear,
 scaler_functions = {"robust":RobustScaler,\
                     "standard":StandardScaler,\
                     "minmax":MinMaxScaler}
+
+loss_function_options:list[str] = ["mean_squared_error", ]
 class MLPTrainer:
     # Base class for flamelet MLP trainer
-    _dt = tf.float32
-    _dt_np = np.float32 
+    _dt = tf.float64
+    _dt_np = np.float64 
 
     _n_epochs:int = DefaultProperties.N_epochs      # Number of epochs to train for.
     _alpha_expo:float = DefaultProperties.init_learning_rate_expo  # Alpha training exponent parameter.
@@ -136,6 +138,7 @@ class MLPTrainer:
     history_epochs = []
     history_loss = []
     val_loss_history = []
+    train_loss_history = []
     history_learningrate = []
 
     _stagnation_tolerance:float = 1e-11 
@@ -154,6 +157,8 @@ class MLPTrainer:
     _custom_weights:list[np.ndarray[float]] = None 
     _custom_biases:list[np.ndarray[float]] = None 
     
+    _loss_function:str = "mean_squared_error"
+
     def __init__(self):
         """Initiate MLP trainer object.
         """
@@ -694,7 +699,9 @@ class TensorFlowFit(MLPTrainer):
                     weights_and_biases.append(w)
                     weights_and_biases.append(b)
                 self._model.set_weights(weights_and_biases)
-
+            self._cost_parameter = 0
+            for w in self._weights:
+                self._cost_parameter += np.shape(w)[0] * np.shape(w)[1]
             # Define learning rate schedule and optimizer
             self.SetDecaySteps()
             #self._decay_steps = 1e4
@@ -820,7 +827,7 @@ class CustomTrainer(MLPTrainer):
     """MLP trainer class with full customization of loss functions.
     """
 
-    _dt = tf.float32            # tensor data type used to cast training data.
+    _dt = tf.float64            # tensor data type used to cast training data.
     _trainable_hyperparams:list[tf.Variable]=[] # MLP hyper-parameters to adjust during training.
     _optimizer = None   # optimization algorithm used to adjust the MLP hyper-parameters during training.
     _lr_schedule = None # learning rate decay schedule.
@@ -832,6 +839,9 @@ class CustomTrainer(MLPTrainer):
 
     _include_regularization:bool = False
     _regularization_param:float = 1e-5
+    _loss_function:str = "mean_square_error"
+    _initializer_minval:float = -0.05
+    _initializer_maxval:float = 0.05
 
     def __init__(self):
         MLPTrainer.__init__(self)
@@ -876,7 +886,7 @@ class CustomTrainer(MLPTrainer):
         if self.weights_initializer == "he_uniform":
             initializer = HeUniform()
         elif self.weights_initializer == "random_uniform":
-            initializer = RandomUniform()
+            initializer = RandomUniform(minval=self._initializer_minval, maxval=self._initializer_maxval)
         if self._loaded_custom_weights:
             for i in range(len(self._custom_weights)):
                 if self._loaded_custom_weights:
@@ -1006,7 +1016,7 @@ class CustomTrainer(MLPTrainer):
         if not os.path.isdir(self._save_dir + "/Model_"+str(self._model_index)):
             os.mkdir(self._save_dir + "/Model_"+str(self._model_index))
         
-        self.Plot_Architecture()
+        #self.Plot_Architecture()
 
         self._cost_parameter = 0
         for w in self._weights:
@@ -1320,11 +1330,11 @@ class PhysicsInformedTrainer(CustomTrainer):
     
     @tf.function
     def update_lambda(self, grads_direct, grads_ub, val_lambda_old):
-        max_grad_direct = 0.0
+        max_grad_direct = tf.constant(0.0, dtype=self._dt)
         for g in grads_direct:
             max_grad_direct = tf.maximum(max_grad_direct, tf.reduce_max(tf.abs(g)))
 
-        mean_grad_ub = 0.0
+        mean_grad_ub = tf.constant(0.0, dtype=self._dt)
         for g_ub in grads_ub:
             mean_grad_ub += val_lambda_old * tf.reduce_mean(tf.abs(g_ub))
         mean_grad_ub /= len(self._weights)
@@ -1332,7 +1342,7 @@ class PhysicsInformedTrainer(CustomTrainer):
         lambda_prime = max_grad_direct / (mean_grad_ub + 1e-7)
         val_lambda_new = 0.9 * val_lambda_old + 0.1 * lambda_prime
         if tf.math.is_nan(val_lambda_new):
-            val_lambda_new = 1.0
+            val_lambda_new = tf.constant(1.0,dtype=self._dt)
         return val_lambda_new
 
     def CollectPIVars(self):
@@ -1824,6 +1834,10 @@ class TrainMLP:
         self.SynchronizeTrainer()
         return 
     
+    def EvaluateMLP(self, x_in:np.ndarray[float]):
+        self._trainer_direct.GetTrainData()
+        self._trainer_direct.InitializeWeights_and_Biases()
+        return self._trainer_direct.EvaluateMLP(x_in)
     def CommenceTraining(self):
         """Initiate the training process.
         """

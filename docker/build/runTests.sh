@@ -13,6 +13,7 @@ Note: If you specify a working directory using the --workdir option for docker,
 flags=""
 branch=""
 testscript=""
+mlpcppb=""
 workdir=$PWD
 
 export CCACHE_DIR=$workdir/ccache
@@ -27,6 +28,10 @@ if [ "$#" -ne 0 ]; then
                 ;;
             -s)
                     testscript=$2
+                    shift 2
+                ;;
+            -m)
+                    mlpcppb=$3
                     shift 2
                 ;;
             *)
@@ -64,9 +69,7 @@ fi
 
 
 # Activate python virtual environment and install required modules
-echo "Setting up python environment..."
-python3 -m venv /home/ubuntu/pyenv 
-virtualenv -p /usr/bin/python3 /home/ubuntu/pyenv 
+echo "Installing python modules..."
 . /home/ubuntu/pyenv/bin/activate 
 python3 -m pip install -r $SU2DATAMINER_HOME/required_packages.txt > pip_install_log.log
 
@@ -74,12 +77,21 @@ python3 -m pip install -r $SU2DATAMINER_HOME/required_packages.txt > pip_install
 export PYTHONPATH=$PYTHONPATH:$SU2DATAMINER_HOME
 export PATH=$PATH:$SU2DATAMINER_HOME/bin/
 
-. /home/ubuntu/pyenv/bin/activate
 echo "Done!" 
 
 
 name="SU2_DataMiner_$(echo $branch | sed 's/\//_/g')"
+
+cd "RegressionTests/MLPCppwrapper"
+git clone https://github.com/EvertBunschoten/MLPCpp.git MLPCpp
+cd MLPCpp 
+git fetch origin
+git checkout $mlpcppb
+cd .. 
+sh install.sh 
+cd ..
+
 echo "Running regression tests for $name"
-cd "RegressionTests"
 
 python3 $testscript
+

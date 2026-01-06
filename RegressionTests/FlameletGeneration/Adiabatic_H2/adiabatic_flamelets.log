@@ -1,0 +1,4 @@
+Loading configuration for flamelet generation
+Loaded configuration file with name adiabatic_flamelets
+Initializing flamelet generator from Config_FGM with name adiabatic_flamelets
+Successfull Freeflame simulation at phi: 1.0 T_u: 300.0 (1/3)
