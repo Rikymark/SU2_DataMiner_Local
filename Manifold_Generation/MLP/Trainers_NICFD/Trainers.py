@@ -19,7 +19,7 @@
 # Description:                                                                                |
 #  Classes for training multi-layer perceptrons on fluid data.                                |
 #                                                                                             |
-# Version: 2.1.0                                                                              |
+# Version: 3.0.0                                                                              |
 #                                                                                             |
 #=============================================================================================#
 

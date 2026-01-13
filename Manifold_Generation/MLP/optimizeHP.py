@@ -20,7 +20,7 @@
 #   Optimize the hyper-parameters describing the MLP architecture and learning parameters for |
 #   accuracy and the number of weights in the network.                                        |
 #                                                                                             |
-# Version: 2.1.0                                                                              |
+# Version: 3.0.0                                                                              |
 #                                                                                             |
 #=============================================================================================#
 

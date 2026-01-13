@@ -20,7 +20,7 @@
 # Description:                                                                                |
 #  Generate flamelet data as per settings in the SU2 DataMiner configuration.                 |
 #                                                                                             |  
-# Version: 2.1.0                                                                              |
+# Version: 3.0.0                                                                              |
 #                                                                                             |
 #=============================================================================================#
 
