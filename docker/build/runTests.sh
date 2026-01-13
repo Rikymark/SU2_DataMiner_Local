@@ -70,6 +70,10 @@ fi
 
 # Activate python virtual environment and install required modules
 echo "Installing python modules..."
+echo "Setting up python environment..." 
+rm -rf /home/ubuntu/pyenv 
+python3 -m venv /home/ubuntu/pyenv 
+virtualenv -p /usr/bin/python3 /home/ubuntu/pyenv 
 . /home/ubuntu/pyenv/bin/activate 
 python3 -m pip install -r $SU2DATAMINER_HOME/required_packages.txt > pip_install_log.log
 
