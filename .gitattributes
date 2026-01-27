@@ -1,0 +1,15 @@
+# Normalizza testo e usa LF come default
+* text=auto
+
+# Codice: sempre LF (ottimo per team misti)
+*.py  text eol=lf
+*.sh  text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.md  text eol=lf
+
+# Dati/reference: non normalizzare EOL
+*.csv -text
+*.ref -text
+
