@@ -5,9 +5,82 @@
 <p style="margin-bottom:1cm;"> </p
 >
 
-
 # SU2 DataMiner
 This repository describes the workflow for manifold generation for data-driven fluid modeling in SU2. The workflow allows the user to generate fluid data and convert these into tables and train multi-layer perceptrons in order to retrieve thermo-chemical quantities during simulations in SU2. The applications are currently limited to non-ideal computational fluid dynamics and flamelet-generated manifold simulations for arbitrary fluids and reactants respectively. 
+
+## MAIN MODIFICATIONS FROM feature_LUT VERSION
+### Tested with REFPROP
+To add the possibility to compute transport quantities of organic fluids NIST REFPROP is called via CoolProp backend.
+
+It is possible to install REFPROP in Linux starting from the Windows installation if the folder FOLTRAN with .FOR files is present in the
+installation, which is usually finded in C:\Program Files (x86)\REFPROP
+
+To install proceed in the following way (TESTED WITH WSL UBUNTU 24.04):
+1. *Copy the installation in Linux*: copy REFPROP from Windows to the folder /opt/refprop
+        ```
+        sudo mkdir -p /opt/refprop
+        sudo cp -r "/mnt/c/Program Files (x86)/REFPROP/"* /opt/refprop/
+        sudo chmod -R a+rX /opt/refprop
+        ```
+2. *Check the existence of the necessary files*
+        ```
+        ls -ld /opt/refprop/FLUIDS /opt/refprop/MIXTURES /opt/refprop/FORTRAN
+        ls -l /opt/refprop/FORTRAN/SETUP.FOR
+        ls -l /opt/refprop/FORTRAN/DLLFILES/PASS_FTN.FOR
+        ```
+3. *Install the Fortan compiler*
+        ```
+        sudo apt update
+        sudo apt install -y git cmake make gfortran
+        ```
+4. *Clone REFPROP-cmake with the necessary submodels from Github*
+        ```
+        cd ~
+        rm -rf REFPROP-cmake
+        git clone --recurse-submodules https://github.com/usnistgov/REFPROP-cmake.git
+        ```
+5. *Configure and compile REFPROP with REFPROP-cmake*
+        ```
+        cd ~/REFPROP-cmake
+        rm -rf build
+        mkdir build && cd build
+        cmake .. -DREFPROP_FORTRAN_PATH=/opt/refprop/FORTRAN -DCMAKE_BUILD_TYPE=Release
+        cmake --build . -j
+        ```
+6. *Copy the librefprop.so library in /opt/refprop*
+        ```
+        sudo cp "$(find . -name 'librefprop.so' -print -quit)" /opt/refprop/librefprop.so
+        sudo chmod a+r /opt/refprop/librefprop.so
+        ls -l /opt/refprop/librefprop.so
+        ```
+7. *Register the library*
+        ```
+        echo "/opt/refprop" | sudo tee /etc/ld.so.conf.d/refprop.conf >/dev/null
+        sudo ldconfig
+        ldconfig -p | grep -i refprop || true
+        ```
+8. *Test the correct working of REFPROP with a small Python script*
+        ```
+        python - <<'PY'
+        import CoolProp.CoolProp as CP
+        from CoolProp.CoolProp import PropsSI
+
+        CP.set_config_string(CP.ALTERNATIVE_REFPROP_PATH, "/opt/refprop")
+        CP.set_config_string(CP.ALTERNATIVE_REFPROP_LIBRARY_PATH, "/opt/refprop/librefprop.so")
+
+        print("CoolProp:", CP.get_global_param_string("version"))
+        print("rho water:", PropsSI("D","T",300,"P",101325,"REFPROP::Water"))
+        PY
+        ```
+9. *Bonus: set environment variables* 
+        To avoid to indicates the REFPROP path in every script one can indicate the necessary environment variables in .bashrc as
+        ```
+        export COOLPROP_ALTERNATIVE_REFPROP_PATH="/opt/refprop/"
+        export COOLPROP_ALTERNATIVE_REFPROP_LIBRARY_PATH="/opt/refprop/librefprop.so"
+        ```
+
+### Added others accepted phases
+The phases liquid, supercritical liquid, and two-phase has been added to the accepted phases in the class DataGenerator_CoolProp in the file Data_Generation/DataGenerator_NICFD.py
 
 ## Capabilities
 The SU2 DataMiner workflow allows the user to generate fluid data and convert these into look-up tables (LUT) or multi-layer perceptrons (MLP) for usage in SU2 simulations. The types of simulations for which this workflow is suitable are flamelet-generated manifold (FGM) and non-ideal computational fluid dynamics (NICFD) simulations. This tool allows the user to start from scratch and end up with a table input file or a set of MLP input files which can immediately be used within SU2. 

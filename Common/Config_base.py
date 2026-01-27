@@ -384,7 +384,6 @@ class Config:
     def SaveConfig(self):
         """
         Save the current SU2 DataMiner configuration.
-
         """
 
         file = open(self._config_name+'.cfg','wb')

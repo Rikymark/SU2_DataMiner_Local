@@ -47,7 +47,7 @@ class DataGenerator_CoolProp(DataGenerator_Base):
     """
     _Config:Config_NICFD
     fluid = None 
-    __accepted_phases:list[int] = [CoolP.iphase_gas, CoolP.iphase_supercritical_gas, CoolP.iphase_supercritical]
+    __accepted_phases:list[int] = [CoolP.iphase_gas, CoolP.iphase_supercritical_gas, CoolP.iphase_supercritical, CoolP.iphase_liquid, CoolP.iphase_supercritical_liquid,CoolP.iphase_twophase]
     # Pressure and temperature limits
     __use_PT:bool = DefaultSettings_NICFD.use_PT_grid
     __T_min:float = DefaultSettings_NICFD.T_min
@@ -395,27 +395,18 @@ class DataGenerator_CoolProp(DataGenerator_Base):
         correct_phase = True 
         if self.fluid.phase() in self.__accepted_phases:
             state_vector_vals[EntropicVars.s.value] = self.fluid.smass()
-            if not self.__mixture:
-                    state_vector_vals[EntropicVars.dsde_rho.value] = self.fluid.first_partial_deriv(CP.iSmass, CP.iUmass, CP.iDmass)
-                    state_vector_vals[EntropicVars.dsdrho_e.value] = self.fluid.first_partial_deriv(CP.iSmass, CP.iDmass, CP.iUmass)
-                    state_vector_vals[EntropicVars.d2sde2.value] = self.fluid.second_partial_deriv(CP.iSmass, CP.iUmass, CP.iDmass, CP.iUmass, CP.iDmass)
-                    state_vector_vals[EntropicVars.d2sdedrho.value] = self.fluid.second_partial_deriv(CP.iSmass, CP.iUmass, CP.iDmass, CP.iDmass, CP.iUmass)
-                    state_vector_vals[EntropicVars.d2sdrho2.value] = self.fluid.second_partial_deriv(CP.iSmass, CP.iDmass, CP.iUmass, CP.iDmass, CP.iUmass)
             state_vector_vals[EntropicVars.Density.value] = self.fluid.rhomass()
             state_vector_vals[EntropicVars.Energy.value] = self.fluid.umass()
             state_vector_vals[EntropicVars.T.value] = self.fluid.T()
             state_vector_vals[EntropicVars.p.value] = self.fluid.p()
+            state_vector_vals[EntropicVars.X.value] = self.fluid.Q()
+            
             state_vector_vals[EntropicVars.c2.value] = self.fluid.speed_sound()**2
-            state_vector_vals[EntropicVars.dTde_rho.value] = self.fluid.first_partial_deriv(CP.iT, CP.iUmass, CP.iDmass)
-            state_vector_vals[EntropicVars.dTdrho_e.value] = self.fluid.first_partial_deriv(CP.iT, CP.iDmass, CP.iUmass)
+            #state_vector_vals[EntropicVars.dTde_rho.value] = self.fluid.first_partial_deriv(CP.iT, CP.iUmass, CP.iDmass)
+            #state_vector_vals[EntropicVars.dTdrho_e.value] = self.fluid.first_partial_deriv(CP.iT, CP.iDmass, CP.iUmass)
             state_vector_vals[EntropicVars.dpde_rho.value] = self.fluid.first_partial_deriv(CP.iP, CP.iUmass, CP.iDmass)
             state_vector_vals[EntropicVars.dpdrho_e.value] = self.fluid.first_partial_deriv(CP.iP, CP.iDmass, CP.iUmass)
-            state_vector_vals[EntropicVars.dhde_rho.value] = self.fluid.first_partial_deriv(CP.iHmass, CP.iUmass, CP.iDmass)
-            state_vector_vals[EntropicVars.dhdrho_e.value] = self.fluid.first_partial_deriv(CP.iHmass, CP.iDmass, CP.iUmass)
-            state_vector_vals[EntropicVars.dhdp_rho.value] = self.fluid.first_partial_deriv(CP.iHmass, CP.iP, CP.iDmass)
-            state_vector_vals[EntropicVars.dhdrho_p.value] = self.fluid.first_partial_deriv(CP.iHmass, CP.iDmass, CP.iP)
-            state_vector_vals[EntropicVars.dsdp_rho.value] = self.fluid.first_partial_deriv(CP.iSmass, CP.iP, CP.iDmass)
-            state_vector_vals[EntropicVars.dsdrho_p.value] = self.fluid.first_partial_deriv(CP.iSmass, CP.iDmass, CP.iP)
+
             state_vector_vals[EntropicVars.cp.value] = self.fluid.cpmass()
         else:
             correct_phase = False

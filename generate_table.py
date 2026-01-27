@@ -4,19 +4,37 @@ from su2dataminer.manifold import SU2TableGenerator_NICFD
 
 # Define SU2 DataMiner configuration for NICFD problems
 config = Config_NICFD()
-# Calculate the fluid properties of Siloxane MM with the Helmholtz equation of state
-config.SetEquationOfState("HEOS")
+# Select the equation of state and the fluid
+config.SetEquationOfState("REFPROP") #Available CoolProp with "HEOS" or REFPROP with "REFPROP"
 config.SetFluid("MM")
 
-# Generate fluid data for densities between 0.01 and 300 kg/m3 and for static 
-# energy values between 2e5 and 5e5 J/kg
-config.UsePTGrid(False)
-config.SetDensityBounds(0.01, 150)
-config.SetEnergyBounds(2e5, 5e5)
+# Configure the LuT Creation
+config.UsePTGrid(True) # If True use P-T grid, if False use rho-e grid
+config.UseAutoRange(False) # If True all the thermodynamic space modeled by the thermodynamic library is reproduced in the LUT
 
-# Data set resolution (does not affect table resolution)
-config.SetNpDensity(400)
-config.SetNpEnergy(200)
+# Select the right input based on the values selected in UsePTGrid and UseAutoRange
+if getattr(config, "_Config_NICFD__use_PT"): 
+
+    # Data set resolution (does not affect table resolution)
+    config.SetNpPressure(400)
+    config.SetNpTemp(200)
+
+    if not getattr(config, "_Config_NICFD__use_auto_range"):
+        
+        config.SetPressureBounds(1e5,21e5)
+        config.SetTemperatureBounds(373.15, 523.15)
+
+else:
+
+    # Data set resolution (does not affect table resolution)
+    config.SetNpDensity(400)
+    config.SetNpEnergy(200)
+
+    if not getattr(config, "_Config_NICFD__use_auto_range"):
+        
+        config.SetDensityBounds(1e5,21e5)
+        config.SetEnergyBounds(373.15, 523.15)
+
 config.SaveConfig()
 
 # Generate and save fluid data
