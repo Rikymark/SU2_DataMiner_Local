@@ -54,8 +54,8 @@ LabelPairing = {EntropicVars.s.name:r"Entropy $(s)[J/kg]$",\
                 EntropicVars.T.name:r"Temperature $(T)[K]$",\
                 EntropicVars.p.name:r"Pressure $(p)[Pa]$",\
                 EntropicVars.c2.name:r"Squared speed of sound $(c^2)[m/s]$",\
-                EntropicVars.dTdrho_e.name:r"Temperature-density derivative $\left(\left.\frac{\partial T}{\partial \rho}\right|_e\right)$",\
-                EntropicVars.dTde_rho.name:r"Temperature-energy derivative $\left(\left.\frac{\partial T}{\partial e}\right|_\rho\right)$",\
+                #EntropicVars.dTdrho_e.name:r"Temperature-density derivative $\left(\left.\frac{\partial T}{\partial \rho}\right|_e\right)$",\
+                #EntropicVars.dTde_rho.name:r"Temperature-energy derivative $\left(\left.\frac{\partial T}{\partial e}\right|_\rho\right)$",\
                 EntropicVars.dpdrho_e.name:r"Pressure-density derivative $\left(\left.\frac{\partial p}{\partial \rho}\right|_e\right)$",\
                 EntropicVars.dpde_rho.name:r"Pressure-energy derivative $\left(\left.\frac{\partial p}{\partial e}\right|_\rho\right)$"}
 
