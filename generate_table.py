@@ -9,7 +9,7 @@ config.SetEquationOfState("REFPROP") #Available CoolProp with "HEOS" or REFPROP 
 config.SetFluid("MM")
 
 # Configure the LuT Creation
-config.UsePTGrid(True) # If True use P-T grid, if False use rho-e grid
+config.UsePTGrid(False) # If True use P-T grid, if False use rho-e grid
 config.UseAutoRange(False) # If True all the thermodynamic space modeled by the thermodynamic library is reproduced in the LUT
 
 # Select the right input based on the values selected in UsePTGrid and UseAutoRange
@@ -27,13 +27,13 @@ if getattr(config, "_Config_NICFD__use_PT"):
 else:
 
     # Data set resolution (does not affect table resolution)
-    config.SetNpDensity(400)
-    config.SetNpEnergy(200)
+    config.SetNpDensity(800)
+    config.SetNpEnergy(400)
 
     if not getattr(config, "_Config_NICFD__use_auto_range"):
         
-        config.SetDensityBounds(1e5,21e5)
-        config.SetEnergyBounds(373.15, 523.15)
+        config.SetDensityBounds(5.24,312)
+        config.SetEnergyBounds(207.5e3, 371e3)
 
 config.SaveConfig()
 

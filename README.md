@@ -82,6 +82,8 @@ To install proceed in the following way (TESTED WITH WSL UBUNTU 24.04):
 ### Added others accepted phases
 The phases liquid, supercritical liquid, and two-phase has been added to the accepted phases in the class DataGenerator_CoolProp in the file Data_Generation/DataGenerator_NICFD.py
 
+### Allow the c
+
 ## Capabilities
 The SU2 DataMiner workflow allows the user to generate fluid data and convert these into look-up tables (LUT) or multi-layer perceptrons (MLP) for usage in SU2 simulations. The types of simulations for which this workflow is suitable are flamelet-generated manifold (FGM) and non-ideal computational fluid dynamics (NICFD) simulations. This tool allows the user to start from scratch and end up with a table input file or a set of MLP input files which can immediately be used within SU2. 
 

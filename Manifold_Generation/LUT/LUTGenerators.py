@@ -282,9 +282,9 @@ class SU2TableGenerator_NICFD:
         h = self._table_nodes[:, EntropicVars.Energy.value] + self._table_nodes[:, EntropicVars.p.value] / self._table_nodes[:, EntropicVars.Density.value]
         self._table_nodes = np.hstack((self._table_nodes, h[:,np.newaxis]))
 
-        self.table_vars.append("cv")
-        cv = 1 /self._table_nodes[:, EntropicVars.dTde_rho.value]
-        self._table_nodes = np.hstack((self._table_nodes, cv[:,np.newaxis]))
+        #self.table_vars.append("cv")
+        #cv = 1 /self._table_nodes[:, EntropicVars.dTde_rho.value]
+        #self._table_nodes = np.hstack((self._table_nodes, cv[:,np.newaxis]))
 
         return
 

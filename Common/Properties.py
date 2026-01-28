@@ -141,6 +141,7 @@ class DefaultSettings_NICFD(DefaultProperties):
     activation_function:str = "exponential"
     config_type:str = "EntropicAI"
     supported_state_vars:list[str] = ["s","T","p","c2","dTdrho_e","dTde_rho","dpdrho_e","dpde_rho"]
+    dP_FD:float = 1
 
 class DefaultSettings_FGM(DefaultProperties):
     config_name:str = "config_FGM"
