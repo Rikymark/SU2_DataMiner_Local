@@ -72,6 +72,8 @@ class Config_NICFD(Config):
     __Rho_upper:float = DefaultSettings_NICFD.Rho_max       # Upper density bound.
     __Energy_lower:float = DefaultSettings_NICFD.Energy_min # Lower energy bound.
     __Energy_upper:float = DefaultSettings_NICFD.Energy_max # Upper energy bound.
+
+    __dP_FD:float=DefaultSettings_NICFD.dP_FD # pressure sted for forward difference in 2PH.
     
     _state_vars:list[str] = ["s", "T","p","c2"]  # State variable names for which the physics-informed MLP is trained.
 
@@ -449,6 +451,8 @@ class Config_NICFD(Config):
             self.__Np_P = Np_P 
         return 
     
+
+    
     def GetNpPressure(self):
         """
         Get the number of divisions for the fluid pressure range.
@@ -458,6 +462,27 @@ class Config_NICFD(Config):
 
         """
         return self.__Np_P
+    
+    def SetdPFD(self, dP_FD:int=DefaultSettings_NICFD.dP_FD):
+        """
+        Set the pressure step for the forward difference employed to compute the P partial derivatives in 2PH region.
+
+        :param dP_FD: pressure step for the forward difference in 2PH.
+        :type dP_FD: float
+        """
+
+        self.__dP_FD = dP_FD 
+        return 
+    
+    def GetdPFD(self):
+        """
+        Get the pressure step for the forward difference employed to compute the P partial derivatives in 2PH region.
+
+        :return: pressure step for the forward difference in 2PH.
+        :rtype: flost
+
+        """
+        return self.__dP_FD
     
     def SetTableCellSize(self, base_cell_size:float, refined_cell_size:float=None):
         """Define the base and optional refined 2D table cell sizes.

@@ -87,6 +87,9 @@ class DataGenerator_CoolProp(DataGenerator_Base):
                 self.__mixture = True 
 
             self.fluid = CP.AbstractState(self._Config.GetEquationOfState(), self._Config.GetFluid())
+            self.fluid_vap = CP.AbstractState(self._Config.GetEquationOfState(), self._Config.GetFluid())
+            self.fluid_liq = CP.AbstractState(self._Config.GetEquationOfState(), self._Config.GetFluid())
+            self.fluid_FD = CP.AbstractState(self._Config.GetEquationOfState(), self._Config.GetFluid())
             self.__auto_range = self._Config.GetAutoRange()
 
             if len(self._Config.GetFluidNames()) > 1:
@@ -106,6 +109,7 @@ class DataGenerator_CoolProp(DataGenerator_Base):
             self.__T_min, self.__T_max = T_bounds[0], T_bounds[1]
             self.__e_min, self.__e_max = e_bounds[0], e_bounds[1]
             self.__Np_Y = self._Config.GetNpTemp()
+            self.__dP_FD = self._Config.GetdPFD()
 
         return 
     
@@ -168,6 +172,21 @@ class DataGenerator_CoolProp(DataGenerator_Base):
         Y_range = np.linspace(Y_min, Y_max, self.__Np_Y)
         
         self.__X_grid, self.__Y_grid = np.meshgrid(X_range, Y_range)
+
+        fig,ax=plt.subplots()
+        Psat=np.linspace(0.5e5,CP.PropsSI("Pcrit","REFPROP::"+self._Config.GetFluid()),200)
+        rhoLiq=CP.PropsSI("D","P",Psat,"Q",0,"REFPROP::"+self._Config.GetFluid())
+        ULiq=CP.PropsSI("Umass","P",Psat,"Q",0,"REFPROP::"+self._Config.GetFluid())
+        rhoVap=CP.PropsSI("D","P",Psat,"Q",1,"REFPROP::"+self._Config.GetFluid())
+        UVap=CP.PropsSI("Umass","P",Psat,"Q",1,"REFPROP::"+self._Config.GetFluid())
+        ax.plot(X_range,np.min(Y_range)*np.ones(len(X_range)))
+        ax.plot(X_range,max(Y_range)*np.ones(len(X_range)))
+        ax.plot(np.min(X_range)*np.ones(len(Y_range)),Y_range)
+        ax.plot(np.max(X_range)*np.ones(len(Y_range)),Y_range)
+
+        ax.plot(rhoLiq,ULiq,"k")
+        ax.plot(rhoVap,UVap,"k")
+        plt.show(block=True)
         return 
     
     def UpdateConfig(self):
@@ -335,9 +354,9 @@ class DataGenerator_CoolProp(DataGenerator_Base):
                         self.fluid.update(CP.PT_INPUTS, self.__X_grid[i,j], self.__Y_grid[i,j])
                     else:
                         self.fluid.update(CP.DmassUmass_INPUTS, self.__X_grid[j,i], self.__Y_grid[j,i])
-                        p = self.fluid.p()
-                        T = self.fluid.T()
-                        self.fluid.update(CP.PT_INPUTS, p, T)
+                        #p = self.fluid.p()
+                        #T = self.fluid.T()
+                        #self.fluid.update(CP.PT_INPUTS, p, T)
                     # Check if fluid phase is not vapor or liquid
                     self.__StateVars_fluid[i,j,:], self.__success_locations[i,j] = self.GetStateVector()
                 except:
@@ -399,15 +418,53 @@ class DataGenerator_CoolProp(DataGenerator_Base):
             state_vector_vals[EntropicVars.Energy.value] = self.fluid.umass()
             state_vector_vals[EntropicVars.T.value] = self.fluid.T()
             state_vector_vals[EntropicVars.p.value] = self.fluid.p()
-            state_vector_vals[EntropicVars.X.value] = self.fluid.Q()
+            X = self.fluid.Q()
             
-            state_vector_vals[EntropicVars.c2.value] = self.fluid.speed_sound()**2
-            #state_vector_vals[EntropicVars.dTde_rho.value] = self.fluid.first_partial_deriv(CP.iT, CP.iUmass, CP.iDmass)
-            #state_vector_vals[EntropicVars.dTdrho_e.value] = self.fluid.first_partial_deriv(CP.iT, CP.iDmass, CP.iUmass)
-            state_vector_vals[EntropicVars.dpde_rho.value] = self.fluid.first_partial_deriv(CP.iP, CP.iUmass, CP.iDmass)
-            state_vector_vals[EntropicVars.dpdrho_e.value] = self.fluid.first_partial_deriv(CP.iP, CP.iDmass, CP.iUmass)
+            if X<=0 or X>=1:
+                state_vector_vals[EntropicVars.c2.value] = self.fluid.speed_sound()**2
+                #state_vector_vals[EntropicVars.dTde_rho.value] = self.fluid.first_partial_deriv(CP.iT, CP.iUmass, CP.iDmass)
+                #state_vector_vals[EntropicVars.dTdrho_e.value] = self.fluid.first_partial_deriv(CP.iT, CP.iDmass, CP.iUmass)
+                state_vector_vals[EntropicVars.dpde_rho.value] = self.fluid.first_partial_deriv(CP.iP, CP.iUmass, CP.iDmass)
+                state_vector_vals[EntropicVars.dpdrho_e.value] = self.fluid.first_partial_deriv(CP.iP, CP.iDmass, CP.iUmass)
+                state_vector_vals[EntropicVars.cp.value] = self.fluid.cpmass()
 
-            state_vector_vals[EntropicVars.cp.value] = self.fluid.cpmass()
+                P=state_vector_vals[EntropicVars.p.value]
+                T=state_vector_vals[EntropicVars.T.value]
+                if T>=self.fluid.T_critical():
+                    state_vector_vals[EntropicVars.X.value]=1
+                elif P>=self.fluid.p_critical():
+                    state_vector_vals[EntropicVars.X.value]=0
+                else:
+                    self.fluid_vap.update(CoolP.QT_INPUTS, 1, T)
+                    Pvap=self.fluid_vap.p()
+                    if P<=Pvap:
+                        state_vector_vals[EntropicVars.X.value]=1
+                    else:
+                        state_vector_vals[EntropicVars.X.value]=0
+            
+            else:
+                state_vector_vals[EntropicVars.X.value]=X
+                print(state_vector_vals[EntropicVars.X.value])
+                dP_FD=self.__dP_FD
+
+                #SOS^2
+                self.fluid_FD.update(CoolP.PSmass_INPUTS, P+dP_FD, self.fluid.smass())
+                state_vector_vals[EntropicVars.c2.value]=dP_FD/(self.fluid_FD.rhomass()-self.fluid.rhomass())
+
+                #dpde_rho
+                self.fluid_FD.update(CoolP.DmassP_INPUTS, self.fluid.rhomass(), P+dP_FD)
+                state_vector_vals[EntropicVars.dpde_rho.value]=dP_FD/(self.fluid_FD.umass()-self.fluid.umass())
+
+                #dpdrho_e
+                self.fluid_FD.update(CoolP.PUmass_INPUTS, P+dP_FD, self.fluid.umass())
+                state_vector_vals[EntropicVars.dpdrho_e.value]=dP_FD/(self.fluid_FD.rhomass()-self.fluid.rhomass())
+
+                #Cp
+                self.fluid_vap.update(CoolP.PQ_INPUTS, P, 1)
+                self.fluid_liq.update(CoolP.PQ_INPUTS, P, 1)
+                alpha=X*self.fluid.rhomass()/self.fluid_vap.rhomass()
+                state_vector_vals[EntropicVars.cp.value] =alpha*self.fluid_vap.cpmass()+(1-alpha)*self.fluid_liq.cpmass()
+                        
         else:
             correct_phase = False
             state_vector_vals[:] = None 
@@ -473,16 +530,17 @@ class DataGenerator_CoolProp(DataGenerator_Base):
         if self.__mixture:
             entropic_vars=[EntropicVars.s]
         else:
-            entropic_vars = [EntropicVars.s, \
-                             EntropicVars.dsdrho_e, \
-                             EntropicVars.dsde_rho, \
-                             EntropicVars.d2sdrho2, \
-                             EntropicVars.d2sdedrho, \
-                             EntropicVars.d2sde2]
+            #entropic_vars = [EntropicVars.s, EntropicVars.dsdrho_e, EntropicVars.dsde_rho, EntropicVars.d2sdrho2, EntropicVars.d2sdedrho, EntropicVars.d2sde2]
+            entropic_vars = [EntropicVars.s]
+        
         TD_vars = [EntropicVars.T, EntropicVars.p, EntropicVars.c2]
+
+        """
         secondary_vars = [EntropicVars.dTdrho_e, EntropicVars.dTde_rho, EntropicVars.dpdrho_e, EntropicVars.dpde_rho,\
                           EntropicVars.dhdrho_e, EntropicVars.dhde_rho, EntropicVars.dhdrho_p, EntropicVars.dhdp_rho,\
                           EntropicVars.dsdp_rho, EntropicVars.dsdrho_p,EntropicVars.cp]
+        """
+        secondary_vars = [EntropicVars.dpdrho_e, EntropicVars.dpde_rho, EntropicVars.cp]
         all_vars = controlling_vars + entropic_vars + TD_vars + secondary_vars
 
         
