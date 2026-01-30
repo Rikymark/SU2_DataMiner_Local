@@ -40,6 +40,9 @@ from sklearn.metrics import mean_squared_error
 from Common.Interpolators import Invdisttree 
 from random import sample 
 from concave_hull import concave_hull, concave_hull_indexes
+from scipy.interpolate import griddata
+import matplotlib.tri as mtri
+import meshio
 
 class SU2TableGenerator_NICFD:
 
@@ -288,6 +291,122 @@ class SU2TableGenerator_NICFD:
 
         return
 
+    def LuT_var_index(self, var: str) -> int:
+
+        try:
+            return self.table_vars.index(var)
+        except ValueError:
+            raise KeyError(f"'{var}' not found in self.table_vars") from None
+
+
+    def build_triangulation(self, x, y, connectivity, hullnodes=None):
+        x = np.asarray(x)
+        y = np.asarray(y)
+
+        conn = np.asarray(connectivity, dtype=np.int64)
+        if conn.shape[1] != 3:
+            raise ValueError(f"The connettivity is not triangular: shape={conn.shape}")
+
+        # chck if gmsh is 1-based
+        if conn.min() == 1:
+            conn = conn - 1
+
+        self.x = x
+        self.y = y
+        self.tri = mtri.Triangulation(x, y, triangles=conn)
+
+        self.hullnodes = None
+        if hullnodes is not None:
+            hn = np.asarray(hullnodes, dtype=np.int64)
+            if hn.min() == 1:
+                hn = hn - 1
+            self.hullnodes = hn
+
+    def PlotContoursLuT(self, config, Variables, Unit, PlotFolderLuT):
+
+        if os.path.isdir(PlotFolderLuT) is False:
+            os.mkdir(PlotFolderLuT)
+
+        EOS=config._Config_NICFD__EOS_type
+        fluid=config._Config_NICFD__fluid_names[0]
+
+        iP=self.LuT_var_index("p")
+        iS=self.LuT_var_index("s")
+                          
+        #rhoMin=config._Config_NICFD__Rho_lower
+        #rhoMax=config._Config_NICFD__Rho_upper
+
+        sMin=np.nanmin(self._table_nodes[:,iS]*1e-3)
+        sMax=np.nanmax(self._table_nodes[:,iS]*1e-3)
+
+        PMin=np.nanmin(self._table_nodes[:,iP]*1e-5)
+        PMax=np.nanmax(self._table_nodes[:,iP]*1e-5)
+
+        #eMin=config._Config_NICFD__Energy_lower
+        #eMax=config._Config_NICFD__Energy_upper
+
+        Psat=np.linspace(CP.PropsSI("PTRIPLE",EOS+"::"+fluid), CP.PropsSI("PCRIT",EOS+"::"+fluid),2000)
+        sLiq=CP.PropsSI("S","P",Psat,"Q",0,EOS+"::"+fluid)
+        sVap=CP.PropsSI("S","P",Psat,"Q",1,EOS+"::"+fluid)
+
+        #rhoLiq=CP.PropsSI("D","P",Psat,"Q",0,EOS+"::"+fluid)
+        #rhoVap=CP.PropsSI("D","P",Psat,"Q",1,EOS+"::"+fluid)
+        #eLiq=CP.PropsSI("Umass","P",Psat,"Q",0,EOS+"::"+fluid)
+        #eVap=CP.PropsSI("Umass","P",Psat,"Q",1,EOS+"::"+fluid)
+
+        X_Data=self._table_nodes[:,iS]*1e-3
+        Y_Data=self._table_nodes[:,iP]*1e-5
+        
+        #hn=np.asarray(self._table_hullnodes, dtype=np.int64)
+        self.build_triangulation(X_Data, Y_Data, self._table_connectivity, hullnodes=self._table_hullnodes)
+
+        for i in range(len(Variables)):
+            ivar=self.LuT_var_index(Variables[i])
+
+            fig,ax=plt.subplots()
+            # Plot saturation dome
+            #ax.plot(rhoLiq,eLiq*1e-3,"-k")
+            #ax.plot(rhoVap,eVap*1e-3,"-k")
+            ax.plot(sLiq*1e-3,Psat*1e-5,"-k")
+            ax.plot(sVap*1e-3,Psat*1e-5,"-k")
+
+            # Contour
+            if Variables[i]!="c2":
+                Z_Data=self._table_nodes[:,ivar]
+            else:
+                Z_Data=self._table_nodes[:,ivar]**0.5
+
+            #Z_Plot=griddata((X_Data, Y_Data), Z_Data, (X_Data[None,:], Y_Data[:,None]), method='linear')
+
+            #print(np.nanmin(Z_Data))
+            #print(np.nanmax(Z_Data))
+            cont=ax.tricontourf(self.tri,Z_Data,vmin=np.nanmin(Z_Data),vmax=np.nanmax(Z_Data))
+
+            if Variables[i]!="c2":
+                plt.colorbar(cont,ax=ax,location='right',label=Variables[i]+f" [{Unit[i]}]")
+            else:
+                plt.colorbar(cont,ax=ax,location='right',label=f"c [{Unit[i]}]")
+
+            #ax.set_xlabel("rho [kg/m3]")
+            #ax.set_ylabel("e [kJ/kg]")
+            ax.set_xlabel("s [kJ/kg]")
+            ax.set_ylabel("P [bar]")
+
+            #ax.set_xlim(rhoMin,rhoMax)
+            #ax.set_ylim(eMin*1e-3,eMax*1e-3)
+
+            ax.set_xlim(sMin,sMax)
+            ax.set_ylim(PMin,PMax)
+
+            ax.grid(ls=":", c="lightgray")
+
+            plt.show(block=True)
+
+            fig.savefig(f"{PlotFolderLuT}/LuT_P-s_diagram+{Variables[i]}_contour.pdf", dpi=600)
+            fig.savefig(f"{PlotFolderLuT}/LuT_P-s_diagram+{Variables[i]}_contour.svg", dpi=600)
+
+        return
+    
     def AddRefinementCriterion(self, TD_variable:str, norm_val_min:float=np.inf, norm_val_max:float=-np.inf):
         """Apply refinement in the table where the normalized value of the thermodynamic variable lies between the specified bounds.
 
@@ -386,3 +505,44 @@ class SU2TableGenerator_NICFD:
         fid.close()
 
         return
+    
+    def WriteOutParaview(self, connectivity, data_nodes_2d, outpath, x_vars, y_vars, variables=None):
+        """
+        connectivity: (Ne,3) (nodes index). Will be converted if 1-based.
+        data_nodes_2d: (Nnodes,Nvars)
+        variables: list of exported variables (None -> tutte)
+        x_vars, y_vars: name of the variables that defines the mesh
+        outpath: es. "results.vtu"
+        """
+        data_nodes_2d = np.asarray(data_nodes_2d)
+        ix=self.LuT_var_index(x_vars)
+        iy=self.LuT_var_index(y_vars)
+        # coordinate del dominio: rho, e
+        x = data_nodes_2d[:, ix]
+
+        if y_vars=="Energy":
+            y = data_nodes_2d[:, iy]*1e-3
+
+        else:
+            y = data_nodes_2d[:, iy]
+            
+        pts = np.column_stack([x, y, np.zeros_like(x)])  # z=0
+
+        conn = np.asarray(connectivity, dtype=np.int64)
+        if conn.min() == 1:
+            conn = conn - 1
+
+        if variables is None:
+            variables = list(self.table_vars)
+
+        point_data = {}
+        for name in variables:
+            j = self.LuT_var_index(name)
+            point_data[name] = np.asarray(data_nodes_2d[:, j])
+
+        mesh = meshio.Mesh(
+            points=pts,
+            cells=[("triangle", conn)],
+            point_data=point_data
+        )
+        mesh.write(outpath)
