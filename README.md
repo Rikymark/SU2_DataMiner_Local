@@ -13,7 +13,7 @@ This repository describes the workflow for manifold generation for data-driven f
 To add the possibility to compute transport quantities of organic fluids NIST REFPROP is called via CoolProp backend.
 
 It is possible to install REFPROP in Linux starting from the Windows installation if the folder FOLTRAN with .FOR files is present in the
-installation, which is usually finded in C:\Program Files (x86)\REFPROP
+installation, which can be usually found in C:\Program Files (x86)\REFPROP
 
 To install proceed in the following way (TESTED WITH WSL UBUNTU 24.04):
 1. *Copy the installation in Linux*: copy REFPROP from Windows to the folder /opt/refprop
@@ -73,20 +73,20 @@ To install proceed in the following way (TESTED WITH WSL UBUNTU 24.04):
         PY
         ```
 9. *Bonus: set environment variables* 
-        To avoid to indicates the REFPROP path in every script one can indicate the necessary environment variables in .bashrc as
+        To avoid adding the REFPROP path in every script one can indicate the necessary environment variables in .bashrc as
         ```
         export COOLPROP_ALTERNATIVE_REFPROP_PATH="/opt/refprop/"
         export COOLPROP_ALTERNATIVE_REFPROP_LIBRARY_PATH="/opt/refprop/librefprop.so"
         ```
 
 ### Added others accepted phases
-The phases liquid, supercritical liquid, and two-phase has been added to the accepted phases in the class DataGenerator_CoolProp in the file Data_Generation/DataGenerator_NICFD.py
+The liquid, supercritical liquid, and two-phase states have been added to the accepted phases in the class DataGenerator_CoolProp in the file Data_Generation/DataGenerator_NICFD.py
 
 ### Properties computation in the two-phase region
-The following properties are computed in liquid, vapor and two-phase regions through a density-interna energy 2D grid:
+The following properties are computed in liquid, vapor and two-phase regions through a density-internal energy 2D grid:
 1. Temperature.
 2. Pressure.
-3. Speed of sound^2. In two-pahse region is computed with the forward difference of the definition (dP/drho)@ s=const.
+3. Speed of sound^2. In two-phase region is computed with the forward difference of the definition (dP/drho)@ s=const.
 4. Entropy.
 5. Vapor quality.
 6. dP/drho @ e=const. Computed with forward difference in two-phase region.
