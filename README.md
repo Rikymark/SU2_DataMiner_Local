@@ -82,7 +82,23 @@ To install proceed in the following way (TESTED WITH WSL UBUNTU 24.04):
 ### Added others accepted phases
 The phases liquid, supercritical liquid, and two-phase has been added to the accepted phases in the class DataGenerator_CoolProp in the file Data_Generation/DataGenerator_NICFD.py
 
-### Allow the c
+### Properties computation in the two-phase region
+The following properties are computed in liquid, vapor and two-phase regions through a density-interna energy 2D grid:
+1. Temperature.
+2. Pressure.
+3. Speed of sound^2. In two-pahse region is computed with the forward difference of the definition (dP/drho)@ s=const.
+4. Entropy.
+5. Vapor quality.
+6. dP/drho @ e=const. Computed with forward difference in two-phase region.
+7. dP/de @ rho=const. Computed with forward difference in two-phase region.
+8. Specific heat at constant pressure. Computed as Cp=alpha*Cp,vap+(1-alpha)*Cp,liq, where alpha is the vapor void fraction, in the two-phase region.
+9. Enthalpy is added in the LuT as its definition h=e+P/rho.
+
+### Contour plots 
+The contour plots (in P-s) of all the quantities computed by the code and saved in the LuT are drawn and saved.
+
+### Save vtk files
+The quantities saved in the lut are saved in a .vtk file. The file is saved so that in the x axis is reported the density while in the y axis the internal energy is reported
 
 ## Capabilities
 The SU2 DataMiner workflow allows the user to generate fluid data and convert these into look-up tables (LUT) or multi-layer perceptrons (MLP) for usage in SU2 simulations. The types of simulations for which this workflow is suitable are flamelet-generated manifold (FGM) and non-ideal computational fluid dynamics (NICFD) simulations. This tool allows the user to start from scratch and end up with a table input file or a set of MLP input files which can immediately be used within SU2. 

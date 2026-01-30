@@ -32,6 +32,7 @@ import numpy as np
 from tqdm import tqdm
 import csv 
 import matplotlib.pyplot as plt 
+import os
 np.random.seed(2)
 
 #---------------------------------------------------------------------------------------------#
@@ -87,6 +88,7 @@ class DataGenerator_CoolProp(DataGenerator_Base):
                 self.__mixture = True 
 
             self.fluid = CP.AbstractState(self._Config.GetEquationOfState(), self._Config.GetFluid())
+            self.fluid_sCrit=CP.PropsSI("S","P",self.fluid.p_critical(),"T",self.fluid.T_critical(),self._Config.GetEquationOfState()+"::"+self._Config.GetFluid())
             self.fluid_vap = CP.AbstractState(self._Config.GetEquationOfState(), self._Config.GetFluid())
             self.fluid_liq = CP.AbstractState(self._Config.GetEquationOfState(), self._Config.GetFluid())
             self.fluid_FD = CP.AbstractState(self._Config.GetEquationOfState(), self._Config.GetFluid())
@@ -179,13 +181,15 @@ class DataGenerator_CoolProp(DataGenerator_Base):
         ULiq=CP.PropsSI("Umass","P",Psat,"Q",0,"REFPROP::"+self._Config.GetFluid())
         rhoVap=CP.PropsSI("D","P",Psat,"Q",1,"REFPROP::"+self._Config.GetFluid())
         UVap=CP.PropsSI("Umass","P",Psat,"Q",1,"REFPROP::"+self._Config.GetFluid())
-        ax.plot(X_range,np.min(Y_range)*np.ones(len(X_range)))
-        ax.plot(X_range,max(Y_range)*np.ones(len(X_range)))
-        ax.plot(np.min(X_range)*np.ones(len(Y_range)),Y_range)
-        ax.plot(np.max(X_range)*np.ones(len(Y_range)),Y_range)
+        ax.plot(X_range,np.min(Y_range)*np.ones(len(X_range)),color="orange")
+        ax.plot(X_range,max(Y_range)*np.ones(len(X_range)),color="orange")
+        ax.plot(np.min(X_range)*np.ones(len(Y_range)),Y_range,color="orange")
+        ax.plot(np.max(X_range)*np.ones(len(Y_range)),Y_range,color="orange")
 
         ax.plot(rhoLiq,ULiq,"k")
         ax.plot(rhoVap,UVap,"k")
+        ax.set_xlabel("rho [kg/m3]")
+        ax.set_ylabel("e [J/kg]")
         plt.show(block=True)
         return 
     
@@ -348,7 +352,7 @@ class DataGenerator_CoolProp(DataGenerator_Base):
         
         # Loop over density-based or pressure-based grid.
         for i in tqdm(range(self.__Np_X)):
-            for j in range(self.__Np_Y):
+            for j in tqdm(range(self.__Np_Y)):
                 try:
                     if self.__use_PT:
                         self.fluid.update(CP.PT_INPUTS, self.__X_grid[i,j], self.__Y_grid[i,j])
@@ -367,6 +371,97 @@ class DataGenerator_CoolProp(DataGenerator_Base):
 
         return 
     
+    def var_index(self, var: "EntropicVars | str") -> int:
+        if isinstance(var, str):
+            var = EntropicVars[var]  
+        return var.value
+
+
+    def PlotContours(self, config, Variables, Unit, PlotFolder):
+
+        if os.path.isdir(PlotFolder) is False:
+            os.mkdir(PlotFolder)
+
+        EOS=config._Config_NICFD__EOS_type
+        fluid=config._Config_NICFD__fluid_names[0]
+
+        iP=self.var_index("p")
+        iS=self.var_index("s")
+                          
+        #rhoMin=config._Config_NICFD__Rho_lower
+        #rhoMax=config._Config_NICFD__Rho_upper
+
+        sMin=np.nanmin(self._DataGenerator_CoolProp__StateVars_fluid[:,:,iS]*1e-3)
+        sMax=np.nanmax(self._DataGenerator_CoolProp__StateVars_fluid[:,:,iS]*1e-3)
+
+        PMin=np.nanmin(self._DataGenerator_CoolProp__StateVars_fluid[:,:,iP]*1e-5)
+        PMax=np.nanmax(self._DataGenerator_CoolProp__StateVars_fluid[:,:,iP]*1e-5)
+
+        #eMin=config._Config_NICFD__Energy_lower
+        #eMax=config._Config_NICFD__Energy_upper
+
+        Psat=np.linspace(CP.PropsSI("PTRIPLE",EOS+"::"+fluid), CP.PropsSI("PCRIT",EOS+"::"+fluid),2000)
+        sLiq=CP.PropsSI("S","P",Psat,"Q",0,EOS+"::"+fluid)
+        sVap=CP.PropsSI("S","P",Psat,"Q",1,EOS+"::"+fluid)
+
+        
+
+        #rhoLiq=CP.PropsSI("D","P",Psat,"Q",0,EOS+"::"+fluid)
+        #rhoVap=CP.PropsSI("D","P",Psat,"Q",1,EOS+"::"+fluid)
+        #eLiq=CP.PropsSI("Umass","P",Psat,"Q",0,EOS+"::"+fluid)
+        #eVap=CP.PropsSI("Umass","P",Psat,"Q",1,EOS+"::"+fluid)
+
+        for i in range(len(Variables)):
+            ivar=self.var_index(Variables[i])
+
+            fig,ax=plt.subplots()
+            # Plot saturation dome
+            #ax.plot(rhoLiq,eLiq*1e-3,"-k")
+            #ax.plot(rhoVap,eVap*1e-3,"-k")
+            ax.plot(sLiq*1e-3,Psat*1e-5,"-k")
+            ax.plot(sVap*1e-3,Psat*1e-5,"-k")
+
+            # Contour
+            #X_Data=self._DataGenerator_CoolProp__X_grid
+            #Y_Data=self._DataGenerator_CoolProp__Y_grid
+
+            X_Data=self._DataGenerator_CoolProp__StateVars_fluid[:,:,iS]*1e-3
+            Y_Data=self._DataGenerator_CoolProp__StateVars_fluid[:,:,iP]*1e-5
+
+            if Variables[i]!="c2":
+                Z_Data=self._DataGenerator_CoolProp__StateVars_fluid[:,:,ivar]
+            else:
+                Z_Data=self._DataGenerator_CoolProp__StateVars_fluid[:,:,ivar]**0.5
+
+            #print(np.nanmin(Z_Data))
+            #print(np.nanmax(Z_Data))
+            cont=ax.contourf(X_Data,Y_Data,Z_Data,vmin=np.nanmin(Z_Data),vmax=np.nanmax(Z_Data))
+
+            if Variables[i]!="c2":
+                plt.colorbar(cont,ax=ax,location='right',label=Variables[i]+f" [{Unit[i]}]")
+            else:
+                plt.colorbar(cont,ax=ax,location='right',label=f"c [{Unit[i]}]")
+
+            #ax.set_xlabel("rho [kg/m3]")
+            #ax.set_ylabel("e [kJ/kg]")
+            ax.set_xlabel("s [kJ/kg]")
+            ax.set_ylabel("P [bar]")
+
+            #ax.set_xlim(rhoMin,rhoMax)
+            #ax.set_ylim(eMin*1e-3,eMax*1e-3)
+
+            ax.set_xlim(sMin,sMax)
+            ax.set_ylim(PMin,PMax)
+
+            ax.grid(ls=":", c="lightgray")
+
+            plt.show(block=True)
+
+            fig.savefig(f"{PlotFolder}/P-s_diagram+{Variables[i]}_contour.pdf", dpi=600)
+            fig.savefig(f"{PlotFolder}/P-s_diagram+{Variables[i]}_contour.svg", dpi=600)
+
+        return
+
     def __AddIdealGasData(self):
         state_flattened = np.vstack(self.__StateVars_fluid)[self.__success_locations.flatten(), :]
         rho_data = state_flattened[:, EntropicVars.Density.value]
@@ -419,7 +514,8 @@ class DataGenerator_CoolProp(DataGenerator_Base):
             state_vector_vals[EntropicVars.T.value] = self.fluid.T()
             state_vector_vals[EntropicVars.p.value] = self.fluid.p()
             X = self.fluid.Q()
-            
+            P=state_vector_vals[EntropicVars.p.value]
+
             if X<=0 or X>=1:
                 state_vector_vals[EntropicVars.c2.value] = self.fluid.speed_sound()**2
                 #state_vector_vals[EntropicVars.dTde_rho.value] = self.fluid.first_partial_deriv(CP.iT, CP.iUmass, CP.iDmass)
@@ -428,9 +524,9 @@ class DataGenerator_CoolProp(DataGenerator_Base):
                 state_vector_vals[EntropicVars.dpdrho_e.value] = self.fluid.first_partial_deriv(CP.iP, CP.iDmass, CP.iUmass)
                 state_vector_vals[EntropicVars.cp.value] = self.fluid.cpmass()
 
-                P=state_vector_vals[EntropicVars.p.value]
+                S=state_vector_vals[EntropicVars.s.value]
                 T=state_vector_vals[EntropicVars.T.value]
-                if T>=self.fluid.T_critical():
+                if S>=self.fluid_sCrit:
                     state_vector_vals[EntropicVars.X.value]=1
                 elif P>=self.fluid.p_critical():
                     state_vector_vals[EntropicVars.X.value]=0
@@ -444,7 +540,7 @@ class DataGenerator_CoolProp(DataGenerator_Base):
             
             else:
                 state_vector_vals[EntropicVars.X.value]=X
-                print(state_vector_vals[EntropicVars.X.value])
+                #print(state_vector_vals[EntropicVars.X.value])
                 dP_FD=self.__dP_FD
 
                 #SOS^2
