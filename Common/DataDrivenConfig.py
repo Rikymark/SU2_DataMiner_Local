@@ -479,10 +479,54 @@ class Config_NICFD(Config):
         Get the pressure step for the forward difference employed to compute the P partial derivatives in 2PH region.
 
         :return: pressure step for the forward difference in 2PH.
-        :rtype: flost
+        :rtype: float
 
         """
         return self.__dP_FD
+    
+    def SetdhFD(self, dh_FD:int=DefaultSettings_NICFD.dh_FD):
+        """
+        Set the enthalpy step for the forward difference employed to compute the h partial derivatives in 2PH region.
+
+        :param dh_FD: enthalpy step for the forward difference in 2PH.
+        :type dh_FD: float
+        """
+
+        self.__dh_FD = dh_FD 
+        return 
+    
+    def GetdhFD(self):
+        """
+        Get the enthalpy step for the forward difference employed to compute the h partial derivatives in 2PH region.
+
+        :return: enthalpy step for the forward difference in 2PH.
+        :rtype: float
+
+        """
+        return self.__dh_FD
+    
+    def SetdrhoMultFD(self, drho_mult_FD:int=DefaultSettings_NICFD.drho_mult_FD):
+        """
+        Set the density multiplier for the forward difference employed to compute the s partial derivatives in 2PH region.
+        Density computed as Density_plus=Density*(1+drho_mult_FD)
+
+        :param drho_mult_FD: density multiplayer for the forward difference in 2PH.
+        :type drho_mult_FD: float
+        """
+
+        self.__drho_mult_FD = drho_mult_FD 
+        return 
+    
+    def GetdrhoMultFD(self):
+        """
+        Get the density multiplier for the forward difference employed to compute the s partial derivatives in 2PH region.
+        Density computed as Density_plus=Density*(1+drho_mult_FD)
+
+        :return: drho_mult_FD: density multiplayer for the forward difference in 2PH.
+        :rtype: float
+
+        """
+        return self.__drho_mult_FD
     
     def SetTableCellSize(self, base_cell_size:float, refined_cell_size:float=None):
         """Define the base and optional refined 2D table cell sizes.

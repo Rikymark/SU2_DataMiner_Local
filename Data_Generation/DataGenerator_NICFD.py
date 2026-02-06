@@ -112,6 +112,8 @@ class DataGenerator_CoolProp(DataGenerator_Base):
             self.__e_min, self.__e_max = e_bounds[0], e_bounds[1]
             self.__Np_Y = self._Config.GetNpTemp()
             self.__dP_FD = self._Config.GetdPFD()
+            self.__dh_FD = self._Config.GetdhFD()
+            self.__drho_mult_FD = self._Config.GetdrhoMultFD()
 
         return 
     
@@ -513,16 +515,31 @@ class DataGenerator_CoolProp(DataGenerator_Base):
             state_vector_vals[EntropicVars.Energy.value] = self.fluid.umass()
             state_vector_vals[EntropicVars.T.value] = self.fluid.T()
             state_vector_vals[EntropicVars.p.value] = self.fluid.p()
+            
             X = self.fluid.Q()
             P=state_vector_vals[EntropicVars.p.value]
 
             if X<=0 or X>=1:
                 state_vector_vals[EntropicVars.c2.value] = self.fluid.speed_sound()**2
+
                 #state_vector_vals[EntropicVars.dTde_rho.value] = self.fluid.first_partial_deriv(CP.iT, CP.iUmass, CP.iDmass)
                 #state_vector_vals[EntropicVars.dTdrho_e.value] = self.fluid.first_partial_deriv(CP.iT, CP.iDmass, CP.iUmass)
+
                 state_vector_vals[EntropicVars.dpde_rho.value] = self.fluid.first_partial_deriv(CP.iP, CP.iUmass, CP.iDmass)
                 state_vector_vals[EntropicVars.dpdrho_e.value] = self.fluid.first_partial_deriv(CP.iP, CP.iDmass, CP.iUmass)
+
+                state_vector_vals[EntropicVars.dhde_rho.value] = self.fluid.first_partial_deriv(CP.iHmass, CP.iUmass, CP.iDmass)
+                state_vector_vals[EntropicVars.dhdrho_e.value] = self.fluid.first_partial_deriv(CP.iHmass, CP.iDmass, CP.iUmass)
+                state_vector_vals[EntropicVars.dhdp_rho.value] = self.fluid.first_partial_deriv(CP.iHmass, CP.iP, CP.iDmass)
+                state_vector_vals[EntropicVars.dhdrho_p.value] = self.fluid.first_partial_deriv(CP.iHmass, CP.iDmass, CP.iP)
+                
+                state_vector_vals[EntropicVars.dsde_rho.value] = self.fluid.first_partial_deriv(CP.iSmass, CP.iUmass, CP.iDmass)
+                state_vector_vals[EntropicVars.dsdrho_e.value] = self.fluid.first_partial_deriv(CP.iSmass, CP.iDmass, CP.iUmass)
+                state_vector_vals[EntropicVars.dsdp_rho.value] = self.fluid.first_partial_deriv(CP.iSmass, CP.iP, CP.iDmass)
+                state_vector_vals[EntropicVars.dsdrho_p.value] = self.fluid.first_partial_deriv(CP.iSmass, CP.iDmass, CP.iP)
+
                 state_vector_vals[EntropicVars.cp.value] = self.fluid.cpmass()
+                state_vector_vals[EntropicVars.cv.value] = self.fluid.cvmass()
 
                 S=state_vector_vals[EntropicVars.s.value]
                 T=state_vector_vals[EntropicVars.T.value]
@@ -542,24 +559,59 @@ class DataGenerator_CoolProp(DataGenerator_Base):
                 state_vector_vals[EntropicVars.X.value]=X
                 #print(state_vector_vals[EntropicVars.X.value])
                 dP_FD=self.__dP_FD
+                dh_FD=self.__dh_FD
+                drho_mult_FD=self.__drho_mult_FD
 
                 #SOS^2
                 self.fluid_FD.update(CoolP.PSmass_INPUTS, P+dP_FD, self.fluid.smass())
                 state_vector_vals[EntropicVars.c2.value]=dP_FD/(self.fluid_FD.rhomass()-self.fluid.rhomass())
 
-                #dpde_rho
-                self.fluid_FD.update(CoolP.DmassP_INPUTS, self.fluid.rhomass(), P+dP_FD)
-                state_vector_vals[EntropicVars.dpde_rho.value]=dP_FD/(self.fluid_FD.umass()-self.fluid.umass())
+                #### Derivatives defined with dP+e=const ####
+                self.fluid_FD.update(CoolP.PUmass_INPUTS, P+dP_FD, self.fluid.umass())
 
                 #dpdrho_e
-                self.fluid_FD.update(CoolP.PUmass_INPUTS, P+dP_FD, self.fluid.umass())
                 state_vector_vals[EntropicVars.dpdrho_e.value]=dP_FD/(self.fluid_FD.rhomass()-self.fluid.rhomass())
 
-                #Cp
+                # dhdrho_e
+                state_vector_vals[EntropicVars.dhdrho_e.value]=(self.fluid_FD.hmass()-self.fluid.hmass())/(self.fluid_FD.rhomass()-self.fluid.rhomass())
+
+                # dsdrho_e
+                state_vector_vals[EntropicVars.dsdrho_e.value]=(self.fluid_FD.smass()-self.fluid.smass())/(self.fluid_FD.rhomass()-self.fluid.rhomass())
+                
+                #### Derivatives defined with dP+rho=const ####
+                self.fluid_FD.update(CoolP.DmassP_INPUTS, self.fluid.rhomass(), P+dP_FD)
+
+                #dpde_rho
+                state_vector_vals[EntropicVars.dpde_rho.value]=dP_FD/(self.fluid_FD.umass()-self.fluid.umass())
+
+                # dhde_rho
+                state_vector_vals[EntropicVars.dhde_rho.value]=(self.fluid_FD.hmass()-self.fluid.hmass())/(self.fluid_FD.umass()-self.fluid.umass())
+
+                # dhdp_rho
+                state_vector_vals[EntropicVars.dhdp_rho.value]=(self.fluid_FD.hmass()-self.fluid.hmass())/dP_FD
+
+                # dsdp_rho
+                state_vector_vals[EntropicVars.dsdp_rho.value]=(self.fluid_FD.smass()-self.fluid.smass())/dP_FD
+
+                # dsde_rho
+                state_vector_vals[EntropicVars.dsde_rho.value]=(self.fluid_FD.smass()-self.fluid.smass())/(self.fluid_FD.umass()-self.fluid.umass())
+
+                #### Derivatives defined with dh+p=const ####
+                # dhdrho_p
+                self.fluid_FD.update(CoolP.HmassP_INPUTS, self.fluid.hmass()+dh_FD, P)
+                state_vector_vals[EntropicVars.dhdrho_p.value]=dh_FD/(self.fluid_FD.rhomass()-self.fluid.rhomass())
+
+                #### Derivatives defined with drho+p=const ####
+                self.fluid_FD.update(CoolP.DmassP_INPUTS, self.fluid.rhomass()*(1+drho_mult_FD), P)
+                # dsdrho_p
+                state_vector_vals[EntropicVars.dsdrho_p.value]=(self.fluid_FD.smass()-self.fluid.smass())/(self.fluid.rhomass()*drho_mult_FD)
+
+                #Cp+Cv
                 self.fluid_vap.update(CoolP.PQ_INPUTS, P, 1)
-                self.fluid_liq.update(CoolP.PQ_INPUTS, P, 1)
+                self.fluid_liq.update(CoolP.PQ_INPUTS, P, 0)
                 alpha=X*self.fluid.rhomass()/self.fluid_vap.rhomass()
                 state_vector_vals[EntropicVars.cp.value] =alpha*self.fluid_vap.cpmass()+(1-alpha)*self.fluid_liq.cpmass()
+                state_vector_vals[EntropicVars.cv.value] =alpha*self.fluid_vap.cvmass()+(1-alpha)*self.fluid_liq.cvmass()
                         
         else:
             correct_phase = False
@@ -627,7 +679,7 @@ class DataGenerator_CoolProp(DataGenerator_Base):
             entropic_vars=[EntropicVars.s]
         else:
             #entropic_vars = [EntropicVars.s, EntropicVars.dsdrho_e, EntropicVars.dsde_rho, EntropicVars.d2sdrho2, EntropicVars.d2sdedrho, EntropicVars.d2sde2]
-            entropic_vars = [EntropicVars.s]
+            entropic_vars = [EntropicVars.s, EntropicVars.dsdrho_e, EntropicVars.dsde_rho]
         
         TD_vars = [EntropicVars.T, EntropicVars.p, EntropicVars.c2]
 
@@ -636,7 +688,9 @@ class DataGenerator_CoolProp(DataGenerator_Base):
                           EntropicVars.dhdrho_e, EntropicVars.dhde_rho, EntropicVars.dhdrho_p, EntropicVars.dhdp_rho,\
                           EntropicVars.dsdp_rho, EntropicVars.dsdrho_p,EntropicVars.cp]
         """
-        secondary_vars = [EntropicVars.dpdrho_e, EntropicVars.dpde_rho, EntropicVars.cp]
+        secondary_vars = [EntropicVars.dpdrho_e, EntropicVars.dpde_rho,\
+                          EntropicVars.dhdrho_e, EntropicVars.dhde_rho, EntropicVars.dhdrho_p, EntropicVars.dhdp_rho,\
+                          EntropicVars.dsdp_rho, EntropicVars.dsdrho_p,EntropicVars.cp,EntropicVars.cv]
         all_vars = controlling_vars + entropic_vars + TD_vars + secondary_vars
 
         
