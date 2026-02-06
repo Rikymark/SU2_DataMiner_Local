@@ -49,13 +49,24 @@ class EntropicVars(Enum):
     p=auto()
     c2=auto()
     s=auto()
+    dsdrho_e=auto()
+    dsde_rho=auto()
     X=auto() # Vap quality
     #dTdrho_e=auto()
     #dTde_rho=auto()
     dpdrho_e=auto()
     dpde_rho=auto()
+    dhdrho_e=auto()
+    dhde_rho=auto()
+    dhdp_rho=auto()
+    dhdrho_p=auto()
+    dsdp_rho=auto()
+    dsdrho_p=auto()
     cp=auto()
+    cv=auto()
     N_STATE_VARS=auto()
+
+
 
 class FGMVars(Enum):
     ProgressVariable=0
@@ -142,6 +153,8 @@ class DefaultSettings_NICFD(DefaultProperties):
     config_type:str = "EntropicAI"
     supported_state_vars:list[str] = ["s","T","p","c2","dTdrho_e","dTde_rho","dpdrho_e","dpde_rho"]
     dP_FD:float = 1
+    dh_FD:float = 1
+    drho_mult_FD:float = 1e-4
 
 class DefaultSettings_FGM(DefaultProperties):
     config_name:str = "config_FGM"

@@ -89,10 +89,19 @@ The following properties are computed in liquid, vapor and two-phase regions thr
 3. Speed of sound^2. In two-phase region is computed with the forward difference of the definition (dP/drho)@ s=const.
 4. Entropy.
 5. Vapor quality.
-6. dP/drho @ e=const. Computed with forward difference in two-phase region.
-7. dP/de @ rho=const. Computed with forward difference in two-phase region.
-8. Specific heat at constant pressure. Computed as Cp=alpha*Cp,vap+(1-alpha)*Cp,liq, where alpha is the vapor void fraction, in the two-phase region.
-9. Enthalpy is added in the LuT as its definition h=e+P/rho.
+6. dP/drho @ e=const. Computed with forward difference in two-phase region by assigning a dP+e=const.
+7. dP/de @ rho=const. Computed with forward difference in two-phase region by assigning a dP+rho=const.
+8. dh/drho @ e=const. Computed with forward difference in two-phase region by assigning a dP+e=const.
+9. dh/de @ rho=const. Computed with forward difference in two-phase region by assigning a dP+rho=const.
+10. dh/dP @ rho=const. Computed with forward difference in two-phase region by assigning a dP+rho=const.
+11. dh/drho @ P=const. Computed with forward difference in two-phase region by assigning a dh+P=const.
+12. ds/drho @ e=const. Computed with forward difference in two-phase region by assigning a dP+e=const.
+13. ds/de @ rho=const. Computed with forward difference in two-phase region by assigning a dP+rho=const.
+14. ds/dP @ rho=const. Computed with forward difference in two-phase region by assigning a dP+rho=const.
+15. ds/drho @ P=const. Computed with forward difference in two-phase region by assigning a drho+P=const.
+16. Specific heat at constant pressure. Computed as Cp=alpha*Cp,vap+(1-alpha)*Cp,liq, where alpha is the vapor void fraction, in the two-phase region.
+17. Specific heat at constant volume. Computed as Cv=alpha*Cv,vap+(1-alpha)*Cv,liq, where alpha is the vapor void fraction, in the two-phase region.
+18. Enthalpy is added in the LuT as its definition h=e+P/rho.
 
 ### Contour plots 
 The contour plots (in P-s) of all the quantities computed by the code and saved in the LuT are drawn and saved.
