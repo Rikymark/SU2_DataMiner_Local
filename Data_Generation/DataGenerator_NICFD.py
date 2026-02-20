@@ -114,6 +114,7 @@ class DataGenerator_CoolProp(DataGenerator_Base):
             self.__dP_FD = self._Config.GetdPFD()
             self.__dh_FD = self._Config.GetdhFD()
             self.__drho_mult_FD = self._Config.GetdrhoMultFD()
+            self.__MainFolder= self._Config.GetMainFolder()
 
         return 
     
@@ -202,7 +203,8 @@ class DataGenerator_CoolProp(DataGenerator_Base):
         else:
             self._Config.SetDensityBounds(self.__rho_min, self.__rho_max)
             self._Config.SetEnergyBounds(self.__e_min, self.__e_max)
-        self._Config.SaveConfig()
+
+        self._Config.SaveConfig(self._Config.GetMainFolder())
         return 
     
     def VisualizeDataGrid(self):
@@ -379,13 +381,22 @@ class DataGenerator_CoolProp(DataGenerator_Base):
         return var.value
 
 
-    def PlotContours(self, config, Variables, Unit, PlotFolder):
+    def PlotContours(self, Variables, Unit, MainFolder, PlotFolder):
+        """
+        Plot the fluid data contours in a P-s diagram
+        
+        :param Variables: array of string containing the name of the properties that will be plotted
+        :param Unit: array of string containing the unit of measurements of the properties that will be plotted
+        :param MainFolder: string indicating the folder where all the outputs are saved
+        :param PlotFolder: string indicating the folder where all the plots are saved, it is contained in MainFolder
+        """
 
-        if os.path.isdir(PlotFolder) is False:
-            os.mkdir(PlotFolder)
 
-        EOS=config._Config_NICFD__EOS_type
-        fluid=config._Config_NICFD__fluid_names[0]
+        if os.path.isdir(MainFolder+"/"+PlotFolder) is False:
+            os.mkdir(MainFolder+"/"+PlotFolder)
+
+        EOS=self._Config.GetEquationOfState()
+        fluid=self._Config.GetFluid()
 
         iP=self.var_index("p")
         iS=self.var_index("s")
@@ -459,8 +470,8 @@ class DataGenerator_CoolProp(DataGenerator_Base):
 
             plt.show(block=True)
 
-            fig.savefig(f"{PlotFolder}/P-s_diagram+{Variables[i]}_contour.pdf", dpi=600)
-            fig.savefig(f"{PlotFolder}/P-s_diagram+{Variables[i]}_contour.svg", dpi=600)
+            fig.savefig(f"{MainFolder}/{PlotFolder}/P-s_diagram+{Variables[i]}_contour.pdf", dpi=600)
+            fig.savefig(f"{MainFolder}/{PlotFolder}/P-s_diagram+{Variables[i]}_contour.svg", dpi=600)
 
         return
 

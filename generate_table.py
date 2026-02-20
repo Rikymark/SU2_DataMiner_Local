@@ -1,6 +1,7 @@
 from su2dataminer.config import Config_NICFD
 from su2dataminer.generate_data import DataGenerator_CoolProp
 from su2dataminer.manifold import SU2TableGenerator_NICFD
+import os
 
 # Define SU2 DataMiner configuration for NICFD problems
 config = Config_NICFD()
@@ -8,14 +9,16 @@ config = Config_NICFD()
 config.SetEquationOfState("REFPROP") # Available CoolProp with "HEOS" or REFPROP with "REFPROP"
 config.SetFluid("MM")
 
-PlotFolder="CompData_Plots_2Phase" # Folder where the plots are saved
-PlotFolderLuT="LuTPlots_2Phase"
+MainFolder="LuT_1Phase_LowP" # folder where all the data are saved
+PlotFolder="CompData_Plots_1Phase_LowP" # Folder where the fluid data plots are saved
+PlotFolderLuT="LuTPlots_1Phase_LowP" # Folder where the LUT plots are saved
+outpath="Lut_Data_1Phase_LowP.vtk" # Name of the file where the LuT are saved to be opened by Paraview
+LuTName="LUT_1Phase_LowP.drg"      # # Name of the file where the LuT are saved as .drg
+
 
 PlotCompData=True # If True plot the data computed by the DataMining operation
 PlotLuTData=True # If True plot the data saved in the LuT
 
-outpath="Lut_Data_2Phase.vtk" # Name of the file where the LuT are saved to be opened by Paraview
-LuTName="LUT_2Phase.drg"      # # Name of the file where the LuT are saved as .drg
 """
 Variables that can be printed are (in P-s diagram):
 Density, Energy, T, c2, X, dpdrho_e, dpde_rho, dhdrho_e, dhde_rho, dhdp_rho, dhdrho_p, dsdrho_e, dsde_rho, dsdp_rho, dsdrho_p, cp, cv
@@ -39,13 +42,13 @@ config.UsePTGrid(False) # If True use P-T grid, if False use rho-e grid
 config.UseAutoRange(False) # If True all the thermodynamic space modeled by the thermodynamic library is reproduced in the LUT
 
 # Select the right input based on the values selected in UsePTGrid and UseAutoRange
-if getattr(config, "_Config_NICFD__use_PT"): 
+if config.GetPTGrid(): 
 
     # Data set resolution (does not affect table resolution)
     config.SetNpPressure(400)
     config.SetNpTemp(200)
 
-    if not getattr(config, "_Config_NICFD__use_auto_range"):
+    if not config.GetAutoRange():
         
         config.SetPressureBounds(1e5,21e5)
         config.SetTemperatureBounds(373.15, 523.15)
@@ -53,19 +56,25 @@ if getattr(config, "_Config_NICFD__use_PT"):
 else:
 
     # Data set resolution (does not affect table resolution)
-    config.SetNpDensity(400)
-    config.SetNpEnergy(400)
+    config.SetNpDensity(1000)
+    config.SetNpEnergy(1000)
 
-    if not getattr(config, "_Config_NICFD__use_auto_range"):
+    if not config.GetAutoRange():
         
-        config.SetDensityBounds(1,450)
-        config.SetEnergyBounds(200e3, 350e3)
+        config.SetDensityBounds(0.2,110)
+        config.SetEnergyBounds(230e3, 390e3)
 
 config.SetdPFD(1) # Pa
 config.SetdhFD(1) # J/kg
 config.SetdrhoMultFD(1e-4) # Density_plus=Density*(1+drho_mult_FD)
+config.SetMainFolder(MainFolder)
 
-config.SaveConfig()
+# Create the main SaveFolder
+if os.path.isdir(MainFolder) is False:
+    os.mkdir(MainFolder)
+
+# Save the config file in the main folder
+config.SaveConfig(MainFolder)
 
 # Generate and save fluid data
 dgen = DataGenerator_CoolProp(config)
@@ -73,7 +82,7 @@ dgen.PreprocessData()
 dgen.ComputeData()
 
 if PlotCompData:
-    dgen.PlotContours(config, Variables,Unit,PlotFolder)
+    dgen.PlotContours(Variables,Unit,MainFolder,PlotFolder)
 
 dgen.SaveData()
 
@@ -82,16 +91,20 @@ lut = SU2TableGenerator_NICFD(config)
 
 # Apply table refinement where the speed of sound is low (near the critical point)
 # and at low density, where the fluid is close to an ideal gas
-lut.AddRefinementCriterion("c2", norm_val_max=0.05, norm_val_min=0.0)
-lut.AddRefinementCriterion("Density", norm_val_max=0.05, norm_val_min=0.0)
+lut.AddRefinementCriterion("c2", norm_val_max=0.25, norm_val_min=0.0)
+lut.AddRefinementCriterion("Density", norm_val_max=0.2, norm_val_min=0.0)
+#lut.AddRefinementCriterion("p", norm_val_max=0.05, norm_val_min=0.0)
+
+# Save the main inputs in a .txt file
+lut.write_TxT_config(config, MainFolder)
 
 # Generate and save table
 lut.GenerateTable()
 
 if PlotLuTData:
-    lut.PlotContoursLuT(config, Variables_LuT, Unit_LuT, PlotFolderLuT)
+    lut.PlotContoursLuT(config, Variables_LuT, Unit_LuT, MainFolder,PlotFolderLuT)
 
-lut.WriteTableFile(LuTName)
+lut.WriteTableFile(MainFolder,LuTName)
 
 if getattr(config, "_Config_NICFD__use_PT"):
     x_vars="p"
@@ -101,4 +114,4 @@ else:
     x_vars="Density"
     y_vars="Energy"
 
-lut.WriteOutParaview(lut._table_connectivity, lut._table_nodes, outpath, x_vars, y_vars, variables=None)
+lut.WriteOutParaview(lut._table_connectivity, lut._table_nodes, MainFolder, outpath, x_vars, y_vars, variables=None)

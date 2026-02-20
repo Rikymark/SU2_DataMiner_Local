@@ -381,12 +381,12 @@ class Config:
                              scaler_function_vals_in=self._scaler_function_vals_in,\
                              scaler_function_vals_out=self._scaler_function_vals_out)
 
-    def SaveConfig(self):
+    def SaveConfig(self,MainFolder:str=None):
         """
-        Save the current SU2 DataMiner configuration.
+        Save the current SU2 DataMiner configuration in the folder MainFolder.
         """
-
-        file = open(self._config_name+'.cfg','wb')
+        print(str(MainFolder))
+        file = open(str(MainFolder)+'/'+self._config_name+'.cfg','wb')
         pickle.dump(self, file)
         file.close()
         return 

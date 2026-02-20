@@ -62,8 +62,8 @@ class SU2TableGenerator_NICFD:
 
     _base_cell_size:float = 2e-2      # Table level base cell size.
 
-    _refined_cell_size:float = 5e-3#2.5e-3#1.5e-3   # Table level refined cell size.
-    _refinement_radius:float = 1e-2#5e-2     # Table level radius within which refinement is applied.
+    _refined_cell_size:float = 5e-3#2.5e-3#1.5e-3   # Table level refined cell size. # old value is 5e-3
+    _refinement_radius:float = 1e-2#5e-2     # Table level radius within which refinement is applied. # original value is 1e-2
 
     _table_nodes = []       # Progress variable, total enthalpy, and mixture fraction node values for each table level.
     _table_nodes_norm = []  # Normalized table nodes for each level.
@@ -322,10 +322,19 @@ class SU2TableGenerator_NICFD:
                 hn = hn - 1
             self.hullnodes = hn
 
-    def PlotContoursLuT(self, config, Variables, Unit, PlotFolderLuT):
+    def PlotContoursLuT(self, config, Variables, Unit, MainFolder, PlotFolderLuT):
+        """
+        Plot the LuT contours in a P-s diagram
+        
+        :param config: item of class Config_NICFD containing the configuration data
+        :param Variables: array of string containing the name of the properties that will be plotted
+        :param Unit: array of string containing the unit of measurements of the properties that will be plotted
+        :param MainFolder: string indicating the folder where all the outputs are saved
+        :param PlotFolderLuT: string indicating the folder where all the plots are saved, it is contained in MainFolder
+        """
 
-        if os.path.isdir(PlotFolderLuT) is False:
-            os.mkdir(PlotFolderLuT)
+        if os.path.isdir(MainFolder+"/"+PlotFolderLuT) is False:
+            os.mkdir(MainFolder+"/"+PlotFolderLuT)
 
         EOS=config._Config_NICFD__EOS_type
         fluid=config._Config_NICFD__fluid_names[0]
@@ -380,12 +389,17 @@ class SU2TableGenerator_NICFD:
 
             #print(np.nanmin(Z_Data))
             #print(np.nanmax(Z_Data))
-            cont=ax.tricontourf(self.tri,Z_Data,vmin=np.nanmin(Z_Data),vmax=np.nanmax(Z_Data))
+            #print("masked?", np.ma.isMaskedArray(Z_Data), "min/max", np.nanmin(Z_Data), np.nanmax(Z_Data))
+            levels = np.linspace(np.nanmin(Z_Data),np.nanmax(Z_Data)*1.000001, 11)
+            cont=ax.tricontourf(self.tri,Z_Data,levels=levels)
+            #cont=ax.tricontourf(self.tri,Z_Data)
+            #cont=ax.scatter(X_Data, Y_Data, c=Z_Data, s=2)
 
+            """"""
             if Variables[i]!="c2":
-                plt.colorbar(cont,ax=ax,location='right',label=Variables[i]+f" [{Unit[i]}]")
+                plt.colorbar(cont,ax=ax,ticks=levels, location='right',label=Variables[i]+f" [{Unit[i]}]")
             else:
-                plt.colorbar(cont,ax=ax,location='right',label=f"c [{Unit[i]}]")
+                plt.colorbar(cont,ax=ax,ticks=levels,location='right',label=f"c [{Unit[i]}]")
 
             #ax.set_xlabel("rho [kg/m3]")
             #ax.set_ylabel("e [kJ/kg]")
@@ -402,8 +416,8 @@ class SU2TableGenerator_NICFD:
 
             plt.show(block=True)
 
-            fig.savefig(f"{PlotFolderLuT}/LuT_P-s_diagram+{Variables[i]}_contour.pdf", dpi=600)
-            fig.savefig(f"{PlotFolderLuT}/LuT_P-s_diagram+{Variables[i]}_contour.svg", dpi=600)
+            fig.savefig(f"{MainFolder}/{PlotFolderLuT}/LuT_P-s_diagram+{Variables[i]}_contour.pdf", dpi=600)
+            fig.savefig(f"{MainFolder}/{PlotFolderLuT}/LuT_P-s_diagram+{Variables[i]}_contour.svg", dpi=600)
 
         return
     
@@ -440,7 +454,7 @@ class SU2TableGenerator_NICFD:
             return []
 
             
-    def WriteTableFile(self, output_filepath:str=None):
+    def WriteTableFile(self, MainFolder:str=None,output_filepath:str=None):
         """
         Save the table data and connectivity as a Dragon library file. If no file name is provided, the table file will be named according to the Config_FGM class name.
 
@@ -449,7 +463,7 @@ class SU2TableGenerator_NICFD:
         """
 
         if output_filepath:
-            file_out = output_filepath
+            file_out = MainFolder+"/"+output_filepath
         else:
             file_out = self._savedir + "/LUT_"+self._Config.GetConfigName()+".drg"
 
@@ -506,14 +520,19 @@ class SU2TableGenerator_NICFD:
 
         return
     
-    def WriteOutParaview(self, connectivity, data_nodes_2d, outpath, x_vars, y_vars, variables=None):
+    def WriteOutParaview(self, connectivity, data_nodes_2d, MainFolder,outpath, x_vars, y_vars, variables=None):
         """
-        connectivity: (Ne,3) (nodes index). Will be converted if 1-based.
-        data_nodes_2d: (Nnodes,Nvars)
-        variables: list of exported variables (None -> tutte)
-        x_vars, y_vars: name of the variables that defines the mesh
-        outpath: es. "results.vtu"
+        write a file containing all the LuT data that can be opened with Paraview
+        
+        :param connectivity: contains the node index of the created LuT
+        :param data_nodes_2d: contains the LuT nodes
+        :param MainFolder: string indicating the folder where all the outputs are saved
+        :param outpath: string indicating the name and extension of the saved file
+        :param x_vars: name of the variable that varies along the mesh x direction
+        :param y_vars: name of the variable that varies along the mesh y direction
+        :param variables: list of the saved variables, if None all the available variables are saved
         """
+
         data_nodes_2d = np.asarray(data_nodes_2d)
         ix=self.LuT_var_index(x_vars)
         iy=self.LuT_var_index(y_vars)
@@ -545,4 +564,69 @@ class SU2TableGenerator_NICFD:
             cells=[("triangle", conn)],
             point_data=point_data
         )
-        mesh.write(outpath)
+        mesh.write(MainFolder+"/"+outpath)
+
+        return
+    
+    def write_TxT_config(self,config, MainFolder):
+        """
+        Write a txt file with the main configuration inputs
+        
+        :param config: item of class Config_NICFD containing the configuration data
+        :param MainFolder: string indicating the folder where all the outputs are saved
+        """
+
+        # Fluid Input
+        # ICEM txt file
+        output_file = open(f"{MainFolder}/Config.txt", "w")
+        output_file.write("%s%s \n" %("EOS=" , config.GetEquationOfState()))
+        output_file.write("%s%s \n" %("Fluid=",config.GetFluid()))
+
+        if config.GetPTGrid():
+            output_file.write("%s%.0f \n" %("Np=",config.GetNpPressure()))
+            output_file.write("%s%.0f \n" %("NT=",config.GetNpTemp()))
+
+            if config.GetAutoRange():
+                output_file.write("%s \n" %("Autorange activated"))
+
+            else:
+
+                PRange=config.GetPressureBounds()
+                TRange=config.GetTemperatureBounds()
+                output_file.write("%s%.0f, %.0f%s \n" %("PRange=[",PRange[0],PRange[1],"] Pa"))
+                output_file.write("%s%.0f, %.0f%s \n" %("TRange=[",TRange[0],TRange[1],"] K"))
+
+        else:
+            output_file.write("%s%.0f \n" %("Nrho=",config.GetNpDensity()))
+            output_file.write("%s%.0f \n" %("Ne=",config.GetNpEnergy()))
+
+            if config.GetAutoRange():
+                output_file.write("%s \n" %("Autorange activated"))
+
+            else:
+
+                rhoRange=config.GetDensityBounds()
+                eRange=config.GetEnergyBounds()
+                output_file.write("%s%.3f, %.0f%s \n" %("rhoRange=[",rhoRange[0],rhoRange[1],"] kg/m3"))
+                output_file.write("%s%.0f, %.0f%s \n" %("eRange=[",eRange[0],eRange[1],"] J/kg"))
+
+        # Steps Input
+        output_file.write("%s%.0f %s \n" %("dP=",config.GetdPFD(), "Pa"))
+        output_file.write("%s%.0f %s \n" %("dh=",config.GetdhFD(), "J/kg"))
+        output_file.write("%s%.6f \n" %("drho multiplier=",config.GetdrhoMultFD()))
+
+        # Local refinment
+        output_file.write("%s \n" %("List of refinments applied to the LuT"))
+
+        VarRefinment=self.refinement_vars
+        MinRefinment=self.refinement_norm_min
+        MaxRefinment=self.refinement_norm_max
+
+        nVarRef=len(VarRefinment)
+
+        for i in range(nVarRef):
+            output_file.write("%s%s, %s%.4f, %s%.4f \n" %("Var: ",VarRefinment[i],"Min normal ref=", MinRefinment[i], "Max normal ref=", MaxRefinment[i]))
+
+        output_file.close()
+
+        return

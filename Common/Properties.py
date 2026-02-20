@@ -155,7 +155,7 @@ class DefaultSettings_NICFD(DefaultProperties):
     dP_FD:float = 1
     dh_FD:float = 1
     drho_mult_FD:float = 1e-4
-
+    MainFolder="LuT"
 class DefaultSettings_FGM(DefaultProperties):
     config_name:str = "config_FGM"
 

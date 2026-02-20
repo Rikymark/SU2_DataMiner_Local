@@ -73,8 +73,8 @@ class Config_NICFD(Config):
     __Energy_lower:float = DefaultSettings_NICFD.Energy_min # Lower energy bound.
     __Energy_upper:float = DefaultSettings_NICFD.Energy_max # Upper energy bound.
 
-    __dP_FD:float=DefaultSettings_NICFD.dP_FD # pressure sted for forward difference in 2PH.
-    
+    __dP_FD:float=DefaultSettings_NICFD.dP_FD # pressure step for forward difference in 2PH.
+    __MainFolder:float=DefaultSettings_NICFD.MainFolder # Main save folder
     _state_vars:list[str] = ["s", "T","p","c2"]  # State variable names for which the physics-informed MLP is trained.
 
     # Table Generation Settings
@@ -527,6 +527,27 @@ class Config_NICFD(Config):
 
         """
         return self.__drho_mult_FD
+    
+    def SetMainFolder(self, MainFolder:str=DefaultSettings_NICFD.MainFolder):
+        """
+        Set the folder where the data are saved
+
+        :param MainFolder: string indicating the folder where all the outputs are save
+        :type MainFolder: string
+        """
+
+        self.__MainFolder = MainFolder
+        return 
+    
+    def GetMainFolder(self):
+        """
+        Get the folder where the data are saved
+
+        :return: MainFolder: string indicating the folder where all the outputs are save
+        :rtype: MainFolder: string
+
+        """
+        return self.__MainFolder
     
     def SetTableCellSize(self, base_cell_size:float, refined_cell_size:float=None):
         """Define the base and optional refined 2D table cell sizes.
