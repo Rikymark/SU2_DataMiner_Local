@@ -9,33 +9,33 @@ config = Config_NICFD()
 config.SetEquationOfState("REFPROP") # Available CoolProp with "HEOS" or REFPROP with "REFPROP"
 config.SetFluid("MM")
 
-MainFolder="LuT_1Phase_LowP" # folder where all the data are saved
-PlotFolder="CompData_Plots_1Phase_LowP" # Folder where the fluid data plots are saved
-PlotFolderLuT="LuTPlots_1Phase_LowP" # Folder where the LUT plots are saved
-outpath="Lut_Data_1Phase_LowP.vtk" # Name of the file where the LuT are saved to be opened by Paraview
-LuTName="LUT_1Phase_LowP.drg"      # # Name of the file where the LuT are saved as .drg
+MainFolder="MM/LuT_2Phase_Adapt_Ref_NS_No_rho_Ref" # folder where all the data are saved
+PlotFolder="CompPlot_2Phase_Adapt_Ref_Medium_NS_No_rho_Ref" # Folder where the fluid data plots are saved
+PlotFolderLuT="CompLuT_2Phase_Adapt_Ref_Medium_NS_No_rho_Ref" # Folder where the LUT plots are saved
+outpath="LuT_2Phase_Adapt_Ref_Medium_NS_No_rho_Ref.vtk" # Name of the file where the LuT are saved to be opened by Paraview
+LuTName="LuT_2Phase_Adapt_Ref_Medium_NS_No_rho_Ref.drg"      # # Name of the file where the LuT are saved as .drg
+RefFile="LuT_Ref_Data.csv"
 
-
-PlotCompData=True # If True plot the data computed by the DataMining operation
+PlotCompData=False # If True plot the data computed by the DataMining operation
 PlotLuTData=True # If True plot the data saved in the LuT
 
 """
 Variables that can be printed are (in P-s diagram):
-Density, Energy, T, c2, X, dpdrho_e, dpde_rho, dhdrho_e, dhde_rho, dhdp_rho, dhdrho_p, dsdrho_e, dsde_rho, dsdp_rho, dsdrho_p, cp, cv
+Density, Energy, T, c2, X, dpdrho_e, dpde_rho, dhdrho_e, dhde_rho, dhdp_rho, dhdrho_p, dsdrho_e, dsde_rho, dsdp_rho, dsdrho_p, dTdrho_e, dTde_rho, cp, cv
 """
 Variables=["Density","Energy", "T", "c2", "X", "dpdrho_e", "dpde_rho", "dhdrho_e", "dhde_rho", "dhdp_rho", "dhdrho_p", "dsdrho_e", "dsde_rho",\
-            "dsdp_rho", "dsdrho_p", "cp", "cv"]
+            "dsdp_rho", "dsdrho_p", "dTdrho_e", "dTde_rho", "cp", "cv"]
 Unit=["kg/m3", "J/kg", "K", "m/s", "-", "J/kg", "kg/m3", "m5/(kgs2)", "-", "m3/kg", "m5/(kgs2)", "m5/(kgs2K)", "1/K", "m3/(kgK)","m5/(kgs2K)",\
-      "J/(kgK)","J/(kgK)"]
+      "Kkg/J", "Km3/kg", "J/(kgK)","J/(kgK)"]
 
 """
 Variables that can be printed (in LuT) are (in P-s diagram):
-Density, Energy, T, c2, X, dpdrho_e, dpde_rho, dhdrho_e, dhde_rho, dhdp_rho, dhdrho_p, dsdrho_e, dsde_rho, dsdp_rho, dsdrho_p, cp, cv, Enthalpy
+Density, Energy, T, c2, X, dpdrho_e, dpde_rho, dhdrho_e, dhde_rho, dhdp_rho, dhdrho_p, dsdrho_e, dsde_rho, dsdp_rho, dsdrho_p, dTdrho_e, dTde_rho, cp, cv, Enthalpy
 """
 Variables_LuT=["Density","Energy", "T", "c2", "X", "dpdrho_e", "dpde_rho", "dhdrho_e", "dhde_rho", "dhdp_rho", "dhdrho_p", "dsdrho_e", "dsde_rho",\
-                "dsdp_rho", "dsdrho_p", "cp", "cv", "Enthalpy"]
+                "dsdp_rho", "dsdrho_p","dTdrho_e", "dTde_rho", "cp", "cv", "Enthalpy"]
 Unit_LuT=["kg/m3", "J/kg", "K", "m/s", "-", "J/kg", "kg/m3", "m5/(kgs2)", "-", "m3/kg", "m5/(kgs2)", "m5/(kgs2K)", "1/K", "m3/(kgK)","m5/(kgs2K)",\
-          "J/(kgK)","J/(kgK)", "J/kg"]
+          "Kkg/J", "Km3/kg","J/(kgK)","J/(kgK)", "J/kg"]
 
 # Configure the LuT Creation
 config.UsePTGrid(False) # If True use P-T grid, if False use rho-e grid
@@ -56,13 +56,13 @@ if config.GetPTGrid():
 else:
 
     # Data set resolution (does not affect table resolution)
-    config.SetNpDensity(1000)
-    config.SetNpEnergy(1000)
+    config.SetNpDensity(200)
+    config.SetNpEnergy(200)
 
     if not config.GetAutoRange():
         
-        config.SetDensityBounds(0.2,110)
-        config.SetEnergyBounds(230e3, 390e3)
+        config.SetDensityBounds(0.5,450)
+        config.SetEnergyBounds(200e3, 365e3)
 
 config.SetdPFD(1) # Pa
 config.SetdhFD(1) # J/kg
@@ -91,15 +91,16 @@ lut = SU2TableGenerator_NICFD(config)
 
 # Apply table refinement where the speed of sound is low (near the critical point)
 # and at low density, where the fluid is close to an ideal gas
-lut.AddRefinementCriterion("c2", norm_val_max=0.25, norm_val_min=0.0)
-lut.AddRefinementCriterion("Density", norm_val_max=0.2, norm_val_min=0.0)
+#lut.AddRefinementCriterion("c2", norm_val_max=0.25, norm_val_min=0.0)
+#lut.AddRefinementCriterion("Density", norm_val_max=0.01, norm_val_min=0.0)
 #lut.AddRefinementCriterion("p", norm_val_max=0.05, norm_val_min=0.0)
 
 # Save the main inputs in a .txt file
 lut.write_TxT_config(config, MainFolder)
 
 # Generate and save table
-lut.GenerateTable()
+LoadRef=f"{MainFolder}/{RefFile}"
+lut.GenerateTable(LoadRef)
 
 if PlotLuTData:
     lut.PlotContoursLuT(config, Variables_LuT, Unit_LuT, MainFolder,PlotFolderLuT)

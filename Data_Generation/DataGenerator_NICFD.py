@@ -533,8 +533,8 @@ class DataGenerator_CoolProp(DataGenerator_Base):
             if X<=0 or X>=1:
                 state_vector_vals[EntropicVars.c2.value] = self.fluid.speed_sound()**2
 
-                #state_vector_vals[EntropicVars.dTde_rho.value] = self.fluid.first_partial_deriv(CP.iT, CP.iUmass, CP.iDmass)
-                #state_vector_vals[EntropicVars.dTdrho_e.value] = self.fluid.first_partial_deriv(CP.iT, CP.iDmass, CP.iUmass)
+                state_vector_vals[EntropicVars.dTde_rho.value] = self.fluid.first_partial_deriv(CP.iT, CP.iUmass, CP.iDmass)
+                state_vector_vals[EntropicVars.dTdrho_e.value] = self.fluid.first_partial_deriv(CP.iT, CP.iDmass, CP.iUmass)
 
                 state_vector_vals[EntropicVars.dpde_rho.value] = self.fluid.first_partial_deriv(CP.iP, CP.iUmass, CP.iDmass)
                 state_vector_vals[EntropicVars.dpdrho_e.value] = self.fluid.first_partial_deriv(CP.iP, CP.iDmass, CP.iUmass)
@@ -589,6 +589,9 @@ class DataGenerator_CoolProp(DataGenerator_Base):
                 # dsdrho_e
                 state_vector_vals[EntropicVars.dsdrho_e.value]=(self.fluid_FD.smass()-self.fluid.smass())/(self.fluid_FD.rhomass()-self.fluid.rhomass())
                 
+                # dTdrho_e
+                state_vector_vals[EntropicVars.dTdrho_e.value]=(self.fluid_FD.T()-self.fluid.T())/(self.fluid_FD.rhomass()-self.fluid.rhomass())
+
                 #### Derivatives defined with dP+rho=const ####
                 self.fluid_FD.update(CoolP.DmassP_INPUTS, self.fluid.rhomass(), P+dP_FD)
 
@@ -606,6 +609,9 @@ class DataGenerator_CoolProp(DataGenerator_Base):
 
                 # dsde_rho
                 state_vector_vals[EntropicVars.dsde_rho.value]=(self.fluid_FD.smass()-self.fluid.smass())/(self.fluid_FD.umass()-self.fluid.umass())
+
+                # dTde_rho
+                state_vector_vals[EntropicVars.dTde_rho.value]=(self.fluid_FD.T()-self.fluid.T())/(self.fluid_FD.umass()-self.fluid.umass())
 
                 #### Derivatives defined with dh+p=const ####
                 # dhdrho_p

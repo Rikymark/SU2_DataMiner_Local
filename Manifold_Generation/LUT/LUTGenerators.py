@@ -62,8 +62,8 @@ class SU2TableGenerator_NICFD:
 
     _base_cell_size:float = 2e-2      # Table level base cell size.
 
-    _refined_cell_size:float = 5e-3#2.5e-3#1.5e-3   # Table level refined cell size. # old value is 5e-3
-    _refinement_radius:float = 1e-2#5e-2     # Table level radius within which refinement is applied. # original value is 1e-2
+    _refined_cell_size:float = 1.5e-3 #2.5e-3#1.5e-3   # Table level refined cell size. # old value is 5e-3, standard for adapted ref 2e-3
+    _refinement_radius:float = 4.5e-2 #5e-2     # Table level radius within which refinement is applied. # original value is 1e-2
 
     _table_nodes = []       # Progress variable, total enthalpy, and mixture fraction node values for each table level.
     _table_nodes_norm = []  # Normalized table nodes for each level.
@@ -234,7 +234,7 @@ class SU2TableGenerator_NICFD:
         fluid_data_out = fluid_data_out[~np.isnan(fluid_data_out[:,0]),:]
         return fluid_data_out
     
-    def GenerateTable(self):
+    def GenerateTable(self,LoadRef):
         """Initiate table generation process
         """
 
@@ -254,10 +254,16 @@ class SU2TableGenerator_NICFD:
 
         # Identify refinement locations
         fluid_data_norm = self._fluid_data_scaler.transform(fluid_data_coarse)
-        ix_ref = self.__ApplyRefinement(fluid_data_norm)
+        ix_ref_user = self.__ApplyRefinement(fluid_data_norm)
+
+        # add refinment near the expected thermodynamic path
+        RefPoints=np.loadtxt(LoadRef,skiprows=1,usecols=(0,1),delimiter=",",dtype=float)
+        RefPoints_clean=RefPoints[np.isfinite(RefPoints).all(axis=1)]
+        ix_ref_TH_transf=self.__ApplyRefinement_exp(fluid_data_coarse, RefPoints_clean)
 
         # Regenerate table including refinement locations
         rhoe_norm_mesh = fluid_data_norm[:, [EntropicVars.Density.value, EntropicVars.Energy.value]]
+        ix_ref=np.union1d(ix_ref_user,ix_ref_TH_transf).astype(np.int64)
         rhoe_norm_ref = rhoe_norm_mesh[ix_ref, :]
         rhoe_mesh_norm = self.__Compute2DMesh(rhoe_norm, ref_pts=rhoe_norm_ref,show=True)
 
@@ -453,7 +459,21 @@ class SU2TableGenerator_NICFD:
         else:
             return []
 
+    def __ApplyRefinement_exp(self, fluid_data_coarse:np.ndarray[float], ref_points:np.ndarray[float]):
+        ix_ref = np.array([],dtype=np.int64)
+        fluid_vars = [a.name for a in EntropicVars][:-1]
+        Density_Data = fluid_data_coarse[:, fluid_vars.index("Density")]
+        Energy_Data = fluid_data_coarse[:, fluid_vars.index("Energy")]
+        for TH in zip(ref_points[:,0], ref_points[:,1]):
             
+            ix = np.argwhere(np.logical_and(np.logical_and(Density_Data>=TH[0]*0.975, Density_Data<=1.025*TH[0]), \
+                             np.logical_and(Energy_Data>=TH[1]*0.975, Energy_Data<=1.025*TH[1])))[:,0]
+            ix_ref = np.append(ix_ref, ix)
+        if len(ix_ref) > 0:
+            return np.unique(ix_ref)
+        else:
+            return []
+
     def WriteTableFile(self, MainFolder:str=None,output_filepath:str=None):
         """
         Save the table data and connectivity as a Dragon library file. If no file name is provided, the table file will be named according to the Config_FGM class name.
@@ -615,6 +635,12 @@ class SU2TableGenerator_NICFD:
         output_file.write("%s%.0f %s \n" %("dh=",config.GetdhFD(), "J/kg"))
         output_file.write("%s%.6f \n" %("drho multiplier=",config.GetdrhoMultFD()))
 
+        # Local refinment options
+        RefMaxCell=self._refined_cell_size
+        RefRadius=self._refinement_radius
+
+        output_file.write("%s%.9f \n" %("Maximum refined cell size=",RefMaxCell))
+        output_file.write("%s%.9f \n" %("Refinment radius=",RefRadius))
         # Local refinment
         output_file.write("%s \n" %("List of refinments applied to the LuT"))
 

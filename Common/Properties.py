@@ -52,8 +52,8 @@ class EntropicVars(Enum):
     dsdrho_e=auto()
     dsde_rho=auto()
     X=auto() # Vap quality
-    #dTdrho_e=auto()
-    #dTde_rho=auto()
+    dTdrho_e=auto()
+    dTde_rho=auto()
     dpdrho_e=auto()
     dpde_rho=auto()
     dhdrho_e=auto()
