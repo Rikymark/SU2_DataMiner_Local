@@ -102,12 +102,17 @@ The following properties are computed in liquid, vapor and two-phase regions thr
 16. Specific heat at constant pressure. Computed as Cp=alpha*Cp,vap+(1-alpha)*Cp,liq, where alpha is the vapor void fraction, in the two-phase region.
 17. Specific heat at constant volume. Computed as Cv=alpha*Cv,vap+(1-alpha)*Cv,liq, where alpha is the vapor void fraction, in the two-phase region.
 18. Enthalpy is added in the LuT as its definition h=e+P/rho.
+19. dT/drho @ e=const. Computed with forward difference in two-phase region by assigning a dP+e=const.
+20. dT/de @ rho=const. Computed with forward difference in two-phase region by assigning a dP+rho=const.
 
 ### Contour plots 
 The contour plots (in P-s) of all the quantities computed by the code and saved in the LuT are drawn and saved.
 
 ### Save vtk files
 The quantities saved in the lut are saved in a .vtk file. The file is saved so that in the x axis is reported the density while in the y axis the internal energy is reported
+
+### Refinment adapted to the expected thermodynamic transformation
+Through the value of rho-e imported from a .csv or .txt file it is possible to refine only the region around the expected expansion. To add a better refinment in the low density region a if has been added in the function tasked to apply this refinment, called __ApplyRefinement_exp and defined in LUTGenerators.py 
 
 ## Capabilities
 The SU2 DataMiner workflow allows the user to generate fluid data and convert these into look-up tables (LUT) or multi-layer perceptrons (MLP) for usage in SU2 simulations. The types of simulations for which this workflow is suitable are flamelet-generated manifold (FGM) and non-ideal computational fluid dynamics (NICFD) simulations. This tool allows the user to start from scratch and end up with a table input file or a set of MLP input files which can immediately be used within SU2. 
@@ -129,11 +134,18 @@ After cloning this repository, add the following lines to your ```~/.bashrc``` i
 export PINNTRAINING_HOME=<PATH_TO_SOURCE>
 export PYTHONPATH=$PYTHONPATH:$PINNTRAINING_HOME
 export PATH=$PATH:$PINNTRAINING_HOME/bin
-```
+``` 
 
 where ```<PATH_TO_SOURCE>``` is the path to where you cloned the repository.
 
 Tutorials can be found under ```TestCases```, proper documentation will follow soon.
+
+## HOW TO OBTAIN THE NECESSARY FUILE FOR THE ADAPTED REFINMENT
+1. If the results of a CFD simulation are available extract only the density and internal energy along a meaningfull path, such as the axis of symmetry for a nozzle
+2. If no CFD results are available the script Predict_Expansion.py may be used
+
+## Predict_Expansion SCRIPT
+This script allow to predict the expected (isoentropic) expansion given the inlet total conditions and the outlet pressure to print a .txt for the adapted refinment (if no CFD info are available). For convenience the created .txt has a similar structure of the .csv saved by Paraview
 
 ## Getting Started
 

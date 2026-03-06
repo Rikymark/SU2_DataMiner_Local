@@ -3,5 +3,5 @@ Documentation/html/*
 CompData_Plots/*
 LuTPlots/*
 LuT_*
-# ignore big csv outputs
 *.csv
+TROVA_New_Nozzle_Des_Exp/

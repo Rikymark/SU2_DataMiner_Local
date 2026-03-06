@@ -62,8 +62,8 @@ class SU2TableGenerator_NICFD:
 
     _base_cell_size:float = 2e-2      # Table level base cell size.
 
-    _refined_cell_size:float = 1.5e-3 #2.5e-3#1.5e-3   # Table level refined cell size. # old value is 5e-3, standard for adapted ref 2e-3
-    _refinement_radius:float = 4.5e-2 #5e-2     # Table level radius within which refinement is applied. # original value is 1e-2
+    _refined_cell_size:float = 1.25e-3 #2.5e-3#1.5e-3   # Table level refined cell size. # old value is 5e-3, standard for adapted ref 2e-3
+    _refinement_radius:float = 3.5e-2 #5e-2     # Table level radius within which refinement is applied. # original value is 1e-2
 
     _table_nodes = []       # Progress variable, total enthalpy, and mixture fraction node values for each table level.
     _table_nodes_norm = []  # Normalized table nodes for each level.
@@ -234,7 +234,7 @@ class SU2TableGenerator_NICFD:
         fluid_data_out = fluid_data_out[~np.isnan(fluid_data_out[:,0]),:]
         return fluid_data_out
     
-    def GenerateTable(self,LoadRef):
+    def GenerateTable(self, LoadRef, MainFolder):
         """Initiate table generation process
         """
 
@@ -258,7 +258,8 @@ class SU2TableGenerator_NICFD:
 
         # add refinment near the expected thermodynamic path
         RefPoints=np.loadtxt(LoadRef,skiprows=1,usecols=(0,1),delimiter=",",dtype=float)
-        RefPoints_clean=RefPoints[np.isfinite(RefPoints).all(axis=1)]
+        mask = np.isfinite(RefPoints).all(axis=1) 
+        RefPoints_clean=RefPoints[mask, :]  
         ix_ref_TH_transf=self.__ApplyRefinement_exp(fluid_data_coarse, RefPoints_clean)
 
         # Regenerate table including refinement locations
@@ -291,9 +292,29 @@ class SU2TableGenerator_NICFD:
         h = self._table_nodes[:, EntropicVars.Energy.value] + self._table_nodes[:, EntropicVars.p.value] / self._table_nodes[:, EntropicVars.Density.value]
         self._table_nodes = np.hstack((self._table_nodes, h[:,np.newaxis]))
 
-        #self.table_vars.append("cv")
-        #cv = 1 /self._table_nodes[:, EntropicVars.dTde_rho.value]
-        #self._table_nodes = np.hstack((self._table_nodes, cv[:,np.newaxis]))
+        # Plot the mesh + expected expansion
+        fig, ax = plt.subplots()
+        i_rho=self.LuT_var_index("Density")
+        i_e=self.LuT_var_index("Energy")
+
+        X_Data=self._table_nodes[:,i_rho]
+        Y_Data=self._table_nodes[:,i_e]*1e-3
+        
+        ax.scatter(X_Data, Y_Data, s=5, c="blue", label="Table nodes")
+        ax.plot(RefPoints_clean[:,0], RefPoints_clean[:,1]*1e-3, "-r", label="Ref exp")
+
+        ax.set_xlabel("rho [kg/m3]")
+        ax.set_ylabel("e [kJ/kg]")
+
+        ax.legend(loc="lower right")
+
+        ax.grid(ls=":", c="lightgray")
+
+        plt.show(block=True)
+
+        fig.savefig(f"{MainFolder}/Mesh_vs_Ref_Exp.pdf", dpi=600)
+        fig.savefig(f"{MainFolder}/Mesh_vs_Ref_Exp.svg", dpi=600)
+
 
         return
 
@@ -465,9 +486,13 @@ class SU2TableGenerator_NICFD:
         Density_Data = fluid_data_coarse[:, fluid_vars.index("Density")]
         Energy_Data = fluid_data_coarse[:, fluid_vars.index("Energy")]
         for TH in zip(ref_points[:,0], ref_points[:,1]):
-            
-            ix = np.argwhere(np.logical_and(np.logical_and(Density_Data>=TH[0]*0.975, Density_Data<=1.025*TH[0]), \
-                             np.logical_and(Energy_Data>=TH[1]*0.975, Energy_Data<=1.025*TH[1])))[:,0]
+            if TH[0]<=9:
+                ix = np.argwhere(np.logical_and(np.logical_and(Density_Data>=TH[0]*0.1, Density_Data<=1.5*TH[0]), \
+                             np.logical_and(Energy_Data>=TH[1]*0.98, Energy_Data<=1.025*TH[1])))[:,0]
+
+            else:
+                ix = np.argwhere(np.logical_and(np.logical_and(Density_Data>=TH[0]*0.98, Density_Data<=1.02*TH[0]), \
+                             np.logical_and(Energy_Data>=TH[1]*0.98, Energy_Data<=1.02*TH[1])))[:,0]
             ix_ref = np.append(ix_ref, ix)
         if len(ix_ref) > 0:
             return np.unique(ix_ref)
