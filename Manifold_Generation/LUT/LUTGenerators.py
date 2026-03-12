@@ -62,8 +62,8 @@ class SU2TableGenerator_NICFD:
 
     _base_cell_size:float = 2e-2      # Table level base cell size.
 
-    _refined_cell_size:float = 1.25e-3 #2.5e-3#1.5e-3   # Table level refined cell size. # old value is 5e-3, standard for adapted ref 2e-3
-    _refinement_radius:float = 3.5e-2 #5e-2     # Table level radius within which refinement is applied. # original value is 1e-2
+    _refined_cell_size:float = 1.1e-3 #2.5e-3#1.5e-3   # Table level refined cell size. # old value is 5e-3, standard for adapted ref 2e-3
+    _refinement_radius:float = 4e-2 #5e-2     # Table level radius within which refinement is applied. # original value is 1e-2
 
     _table_nodes = []       # Progress variable, total enthalpy, and mixture fraction node values for each table level.
     _table_nodes_norm = []  # Normalized table nodes for each level.

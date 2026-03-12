@@ -21,10 +21,10 @@ def comp_expected_exp(Pin,h_in,Pout,Model,fluid,n_discr, SaveFolder, SaveFile):
         rho_vect[i]=HEOS.rhomass()
 
     output_file = open(f"{SaveFolder}/{SaveFile}", "w")
-    output_file.write("%s, %s \n" %("rho [kg/m3]", "e [J/kg]"))
+    output_file.write("%s, %s, %s \n" %("rho [kg/m3]", "e [J/kg]", "P [Pa]"))
     
     for i in range(n_discr):
-        output_file.write("%.5f, %.5f \n" %(rho_vect[i], e_vect[i]))
+        output_file.write("%.5f, %.5f, %.5f \n" %(rho_vect[i], e_vect[i], Pvect[i]))
 
     output_file.close()
 
@@ -47,14 +47,14 @@ if __name__ == "__main__":
     ######## USER'S INPUTS ########
     fluid = "MM"
     Model="REFPROP"
-    Pin=19.31 # bar
-    Tin=220.6 # degC
+    Pin=18.094 # bar
+    Tin=249.836 # degC
     TwoPH_inlet=False # If true, h_in is employed instead of Tin to compute the total inlet conditions
     h_in=None
-    Pout=1.37 # bar
+    Pout=1.8094 # bar
 
-    SaveFolder="TROVA_New_Nozzle_Des_Exp"
-    SaveFile="TROVA_New_Nozzle_Des_Expected_Exp.txt"
+    SaveFolder="ORCHID_Nozzle"
+    SaveFile="ORCHID_Nozzle_Expected_Exp.txt"
 
     n_discr=1000 # Number of points for the discretization of the expansion process
 
