@@ -9,11 +9,11 @@ config = Config_NICFD()
 config.SetEquationOfState("REFPROP") # Available CoolProp with "HEOS" or REFPROP with "REFPROP"
 config.SetFluid("MM")
 
-MainFolder="MM/LuT_2Phase_Adapt_Ref_Low_Energy_Ref_V2" # folder where all the data are saved
-PlotFolder="CompPlot_2Phase_Adapt_Ref_Low_Energy_Ref_V2" # Folder where the fluid data plots are saved
-PlotFolderLuT="CompLuT_2Phase_Adapt_Ref_Low_Energy_Ref_V2" # Folder where the LUT plots are saved
-outpath="LuT_2Phase_Adapt_Ref_Low_Energy_Ref_V2.vtk" # Name of the file where the LuT are saved to be opened by Paraview
-LuTName="LuT_2Phase_Adapt_Ref_Low_Energy_Ref_V2.drg"      # # Name of the file where the LuT are saved as .drg
+MainFolder="MM/LuT_2Phase_Adapt_Ref_Low_Energy_Ref_V2_Fine" # folder where all the data are saved
+PlotFolder="CompPlot_2Phase_Adapt_Ref_Low_Energy_Ref_V2_Fine" # Folder where the fluid data plots are saved
+PlotFolderLuT="CompLuT_LuT_2Phase_Adapt_Ref_Low_Energy_Ref_V2_Fine" # Folder where the LUT plots are saved
+outpath="LuT_2Phase_Adapt_Ref_Low_Energy_Ref_V2_Fine.vtk" # Name of the file where the LuT are saved to be opened by Paraview
+LuTName="LuT_2Phase_Adapt_Ref_Low_Energy_Ref_V2_Fine.drg"      # # Name of the file where the LuT are saved as .drg
 RefFile="TROVA_New_Nozzle_Des_Expected_Exp.txt"
 
 PlotCompData=False # If True plot the data computed by the DataMining operation

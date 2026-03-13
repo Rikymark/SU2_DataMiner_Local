@@ -62,7 +62,7 @@ class SU2TableGenerator_NICFD:
 
     _base_cell_size:float = 2e-2      # Table level base cell size.
 
-    _refined_cell_size:float = 1.1e-3 #2.5e-3#1.5e-3   # Table level refined cell size. # old value is 5e-3, standard for adapted ref 2e-3
+    _refined_cell_size:float = 4.5e-4 #2.5e-3#1.5e-3   # Table level refined cell size. # old value is 5e-3, standard for adapted ref 2e-3
     _refinement_radius:float = 4e-2 #5e-2     # Table level radius within which refinement is applied. # original value is 1e-2
 
     _table_nodes = []       # Progress variable, total enthalpy, and mixture fraction node values for each table level.
@@ -73,6 +73,18 @@ class SU2TableGenerator_NICFD:
     _controlling_variables:list[str]=["Density",\
                                       "Energy"]  # FGM controlling variables
     _fluid_data_scaler:MinMaxScaler = None   # Scaler for flamelet data controlling variables.
+
+    _LowMult_Density:float=0.98  # Adaptive refinment density lower bound is computed as _LowMult_Density*Density[i]
+    _HighMult_Density:float=1.02 # Adaptive refinment density upper bound is computed as _HighMult_Density*Density[i]
+
+    _LowMult_Energy:float=0.98 # Adaptive refinment energy lower bound is computed as _LowMult_Energy*Energy[i]
+    _HighMult_Energy:float=1.02 # Adaptive refinment energy upper bound is computed as _HighMult_Energy*Energy[i]
+
+    _LowMult_Density_ref:float=0.1 # Adaptive refinment density lower bound is computed as _LowMult_Density_ref*Density[i] when density is lower than _Density_ref_value
+    _HighMult_Density_ref:float=1.25 # Adaptive refinment density upper bound is computed as _HighMult_Density_ref*Density[i] when density is lower than _Density_ref_value
+
+    _Density_ref_value:float=9 # Density value below which _LowMult_Density_ref and _HighMult_Density_ref are employed as multiplier
+
 
     def __init__(self, Config:Config_NICFD, load_file:str=None):
         """
@@ -481,19 +493,33 @@ class SU2TableGenerator_NICFD:
             return []
 
     def __ApplyRefinement_exp(self, fluid_data_coarse:np.ndarray[float], ref_points:np.ndarray[float]):
+
+        rho_low_mult=self._LowMult_Density
+        rho_up_mult=self._HighMult_Density
+
+        e_low_mult=self._LowMult_Energy
+        e_up_mult=self._HighMult_Energy
+
+        rho_low_mult_ref=self._LowMult_Density_ref
+        rho_up_mult_ref=self._HighMult_Density_ref
+
+        rho_limit=self._Density_ref_value
+
         ix_ref = np.array([],dtype=np.int64)
         fluid_vars = [a.name for a in EntropicVars][:-1]
         Density_Data = fluid_data_coarse[:, fluid_vars.index("Density")]
         Energy_Data = fluid_data_coarse[:, fluid_vars.index("Energy")]
         for TH in zip(ref_points[:,0], ref_points[:,1]):
-            if TH[0]<=9:
-                ix = np.argwhere(np.logical_and(np.logical_and(Density_Data>=TH[0]*0.1, Density_Data<=1.5*TH[0]), \
-                             np.logical_and(Energy_Data>=TH[1]*0.98, Energy_Data<=1.025*TH[1])))[:,0]
+            if TH[0]<=rho_limit:
+                ix = np.argwhere(np.logical_and(np.logical_and(Density_Data>=TH[0]*rho_low_mult_ref, Density_Data<=rho_up_mult_ref*TH[0]), \
+                             np.logical_and(Energy_Data>=TH[1]*e_low_mult, Energy_Data<=e_up_mult*TH[1])))[:,0]
 
             else:
-                ix = np.argwhere(np.logical_and(np.logical_and(Density_Data>=TH[0]*0.98, Density_Data<=1.02*TH[0]), \
-                             np.logical_and(Energy_Data>=TH[1]*0.98, Energy_Data<=1.02*TH[1])))[:,0]
+                ix = np.argwhere(np.logical_and(np.logical_and(Density_Data>=TH[0]*rho_low_mult, Density_Data<=rho_up_mult*TH[0]), \
+                             np.logical_and(Energy_Data>=TH[1]*e_low_mult, Energy_Data<=e_up_mult*TH[1])))[:,0]
+                
             ix_ref = np.append(ix_ref, ix)
+
         if len(ix_ref) > 0:
             return np.unique(ix_ref)
         else:
@@ -666,6 +692,7 @@ class SU2TableGenerator_NICFD:
 
         output_file.write("%s%.9f \n" %("Maximum refined cell size=",RefMaxCell))
         output_file.write("%s%.9f \n" %("Refinment radius=",RefRadius))
+
         # Local refinment
         output_file.write("%s \n" %("List of refinments applied to the LuT"))
 
@@ -677,6 +704,29 @@ class SU2TableGenerator_NICFD:
 
         for i in range(nVarRef):
             output_file.write("%s%s, %s%.4f, %s%.4f \n" %("Var: ",VarRefinment[i],"Min normal ref=", MinRefinment[i], "Max normal ref=", MaxRefinment[i]))
+
+        # Adaptive refinment options
+        rho_low_mult=self._LowMult_Density
+        rho_up_mult=self._HighMult_Density
+
+        e_low_mult=self._LowMult_Energy
+        e_up_mult=self._HighMult_Energy
+
+        rho_low_mult_ref=self._LowMult_Density_ref
+        rho_up_mult_ref=self._HighMult_Density_ref
+
+        rho_limit=self._Density_ref_value
+
+        output_file.write("%s%.9f \n" %("Density lower bound multiplier=",rho_low_mult))
+        output_file.write("%s%.9f \n" %("Density upper bound multiplier=",rho_up_mult))
+
+        output_file.write("%s%.9f \n" %("Energy lower bound multiplier=",e_low_mult))
+        output_file.write("%s%.9f \n" %("Energy upper bound multiplier=",e_up_mult))
+
+        output_file.write("%s%.9f \n" %("Refined density lower bound multiplier=",rho_low_mult_ref))
+        output_file.write("%s%.9f \n" %("Refined density upper bound multiplier=",rho_up_mult_ref))
+
+        output_file.write("%s%.9f%s \n" %("Density below which larger bounds are used=",rho_limit," [kg/m3]"))
 
         output_file.close()
 
