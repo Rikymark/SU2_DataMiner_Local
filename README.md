@@ -112,7 +112,10 @@ The contour plots (in P-s) of all the quantities computed by the code and saved 
 The quantities saved in the lut are saved in a .vtk file. The file is saved so that in the x axis is reported the density while in the y axis the internal energy is reported
 
 ### Refinment adapted to the expected thermodynamic transformation
-Through the value of rho-e imported from a .csv or .txt file it is possible to refine only the region around the expected expansion. To add a better refinment in the low density region a if has been added in the function tasked to apply this refinment, called __ApplyRefinement_exp and defined in LUTGenerators.py 
+Through the value of rho-e imported from a .csv or .txt file it is possible to refine only the region around the expected expansion. To add a better refinment in the low density region a if has been added in the function tasked to apply this refinment, called __ApplyRefinement_exp and defined in LUTGenerators.py. The refinment area can be controlled via 6 multipliers which values are assigned in Manifold_Generation/LUT/LUTGenerators.py in the USER-INPUTS section.
+
+### Local finer refinment
+A finer refinment can be added at lower density and near the intersection between the expansion path and the saturation. The refinment settings can be controlled in Manifold_Generation/LUT/LUTGenerators.py in the USER-INPUTS section.
 
 ## Capabilities
 The SU2 DataMiner workflow allows the user to generate fluid data and convert these into look-up tables (LUT) or multi-layer perceptrons (MLP) for usage in SU2 simulations. The types of simulations for which this workflow is suitable are flamelet-generated manifold (FGM) and non-ideal computational fluid dynamics (NICFD) simulations. This tool allows the user to start from scratch and end up with a table input file or a set of MLP input files which can immediately be used within SU2. 

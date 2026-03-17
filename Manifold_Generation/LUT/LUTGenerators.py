@@ -60,10 +60,26 @@ class SU2TableGenerator_NICFD:
     refinement_norm_min = []
     refinement_norm_max = []
 
+    ######## START USER-INPUT ########
     _base_cell_size:float = 2e-2      # Table level base cell size.
 
-    _refined_cell_size:float = 4.5e-4 #2.5e-3#1.5e-3   # Table level refined cell size. # old value is 5e-3, standard for adapted ref 2e-3
-    _refinement_radius:float = 4e-2 #5e-2     # Table level radius within which refinement is applied. # original value is 1e-2
+    _refined_cell_size:float = 2e-3 #2.5e-3#1.5e-3   # Table level refined cell size. # old value is 5e-3, standard for adapted ref 2e-3
+    _finer_refined_cell_size:float = 6e-4 # Refinment for finer zones
+    _finer_sat_refined_cell_size:float = 6e-4 # Refinment for finer zones near saturation curve
+    _refinement_radius:float = 5e-2 #5e-2     # Table level radius within which refinement is applied. # original value is 1e-2
+
+    _LowMult_Density:float=0.98  # Adaptive refinment density lower bound is computed as _LowMult_Density*Density[i]
+    _HighMult_Density:float=1.02 # Adaptive refinment density upper bound is computed as _HighMult_Density*Density[i]
+
+    _LowMult_Energy:float=0.98 # Adaptive refinment energy lower bound is computed as _LowMult_Energy*Energy[i]
+    _HighMult_Energy:float=1.02 # Adaptive refinment energy upper bound is computed as _HighMult_Energy*Energy[i]
+
+    _LowMult_Density_ref:float=0.1 # Adaptive refinment density lower bound is computed as _LowMult_Density_ref*Density[i] when density is lower than _Density_ref_value
+    _HighMult_Density_ref:float=1.2 # Adaptive refinment density upper bound is computed as _HighMult_Density_ref*Density[i] when density is lower than _Density_ref_value
+
+    _Density_ref_value:float=5 # Density value below which _LowMult_Density_ref and _HighMult_Density_ref are employed as multiplier
+    _Density_finer_ref_value:float=9 # Density value below the finer refinment is activated
+    ######## END USER-INPUT ########
 
     _table_nodes = []       # Progress variable, total enthalpy, and mixture fraction node values for each table level.
     _table_nodes_norm = []  # Normalized table nodes for each level.
@@ -73,18 +89,6 @@ class SU2TableGenerator_NICFD:
     _controlling_variables:list[str]=["Density",\
                                       "Energy"]  # FGM controlling variables
     _fluid_data_scaler:MinMaxScaler = None   # Scaler for flamelet data controlling variables.
-
-    _LowMult_Density:float=0.98  # Adaptive refinment density lower bound is computed as _LowMult_Density*Density[i]
-    _HighMult_Density:float=1.02 # Adaptive refinment density upper bound is computed as _HighMult_Density*Density[i]
-
-    _LowMult_Energy:float=0.98 # Adaptive refinment energy lower bound is computed as _LowMult_Energy*Energy[i]
-    _HighMult_Energy:float=1.02 # Adaptive refinment energy upper bound is computed as _HighMult_Energy*Energy[i]
-
-    _LowMult_Density_ref:float=0.1 # Adaptive refinment density lower bound is computed as _LowMult_Density_ref*Density[i] when density is lower than _Density_ref_value
-    _HighMult_Density_ref:float=1.25 # Adaptive refinment density upper bound is computed as _HighMult_Density_ref*Density[i] when density is lower than _Density_ref_value
-
-    _Density_ref_value:float=9 # Density value below which _LowMult_Density_ref and _HighMult_Density_ref are employed as multiplier
-
 
     def __init__(self, Config:Config_NICFD, load_file:str=None):
         """
@@ -150,7 +154,7 @@ class SU2TableGenerator_NICFD:
         
         return fluid_data_norm
         
-    def __Compute2DMesh(self, points:np.ndarray[float], ref_pts:np.ndarray[float]=[],show:bool=False):
+    def __Compute2DMesh(self, points:np.ndarray[float], ref_pts:np.ndarray[float]=[],ref_pts_add:np.ndarray[float]=[],ref_pts_add_sat:np.ndarray[float]=[] ,show:bool=False):
         
         # Create concave hull of normalized table coordinates.
         XY_hull = concave_hull(np.unique(points,axis=0), length_threshold=1e-1)
@@ -197,10 +201,25 @@ class SU2TableGenerator_NICFD:
             for i in range(len(ref_pts)):
                 ref_pt_ids.append(factory.addPoint(ref_pts[i,0], ref_pts[i, 1], 0.0))
 
+        # Points where to apply finer refinment
+        ref_pt_ids_add = []
+        if len(ref_pts_add)>0:
+            for i in range(len(ref_pts_add)):
+                ref_pt_ids_add.append(factory.addPoint(ref_pts_add[i,0], ref_pts_add[i, 1], 0.0))
+
+        # Points where to apply finer refinment near the saturation curve
+        ref_pt_ids_add_sat = []
+        if len(ref_pts_add_sat)>0:
+            for i in range(len(ref_pts_add_sat)):
+                ref_pt_ids_add_sat.append(factory.addPoint(ref_pts_add_sat[i,0], ref_pts_add_sat[i, 1], 0.0))
+
+        
+
         # Apply conditional refinement, where the refined cell size is applied in proximity to the refinement points
         gmsh.model.mesh.field.add("Distance", 1)
         gmsh.model.mesh.field.setNumbers(1, "PointsList", ref_pt_ids)
         gmsh.model.mesh.field.setNumber(1, "Sampling", 100)
+
         gmsh.model.mesh.field.add("Threshold", 2)
         gmsh.model.mesh.field.setNumber(2, "InField", 1)
         gmsh.model.mesh.field.setNumber(2, "SizeMin", self._refined_cell_size)
@@ -208,8 +227,32 @@ class SU2TableGenerator_NICFD:
         gmsh.model.mesh.field.setNumber(2, "DistMin", 0.5*self._refinement_radius)
         gmsh.model.mesh.field.setNumber(2, "DistMax", 1.5*self._refinement_radius)
 
+        # Apply finer refinement where needed
+        gmsh.model.mesh.field.add("Distance", 3)
+        gmsh.model.mesh.field.setNumbers(3, "PointsList", ref_pt_ids_add)
+        gmsh.model.mesh.field.setNumber(3, "Sampling", 100)
+
+        gmsh.model.mesh.field.add("Threshold", 4)
+        gmsh.model.mesh.field.setNumber(4, "InField", 3)
+        gmsh.model.mesh.field.setNumber(4, "SizeMin", self._finer_refined_cell_size)
+        gmsh.model.mesh.field.setNumber(4, "SizeMax", self._base_cell_size)
+        gmsh.model.mesh.field.setNumber(4, "DistMin", 0.5*self._refinement_radius)
+        gmsh.model.mesh.field.setNumber(4, "DistMax", 1.5*self._refinement_radius)
+
+        # Apply finer refinement around the saturation curve
+        gmsh.model.mesh.field.add("Distance", 5)
+        gmsh.model.mesh.field.setNumbers(5, "PointsList", ref_pt_ids_add_sat)
+        gmsh.model.mesh.field.setNumber(5, "Sampling", 100)
+
+        gmsh.model.mesh.field.add("Threshold", 6)
+        gmsh.model.mesh.field.setNumber(6, "InField", 5)
+        gmsh.model.mesh.field.setNumber(6, "SizeMin", self._finer_sat_refined_cell_size)
+        gmsh.model.mesh.field.setNumber(6, "SizeMax", self._base_cell_size)
+        gmsh.model.mesh.field.setNumber(6, "DistMin", 0.5*self._refinement_radius)
+        gmsh.model.mesh.field.setNumber(6, "DistMax", 1.5*self._refinement_radius)
+
         gmsh.model.mesh.field.add("Min", 7)
-        gmsh.model.mesh.field.setNumbers(7, "FieldsList", [2])
+        gmsh.model.mesh.field.setNumbers(7, "FieldsList", [2, 4, 6])
         gmsh.model.mesh.field.setAsBackgroundMesh(7)
 
         factory.synchronize()
@@ -246,9 +289,25 @@ class SU2TableGenerator_NICFD:
         fluid_data_out = fluid_data_out[~np.isnan(fluid_data_out[:,0]),:]
         return fluid_data_out
     
-    def GenerateTable(self, LoadRef, MainFolder):
+    def GenerateTable(self, LoadRef, MainFolder, config):
         """Initiate table generation process
         """
+
+        # Compute the saturation curves
+        EOS=config._Config_NICFD__EOS_type
+        fluid=config._Config_NICFD__fluid_names[0]
+
+        Psat=np.linspace(CP.PropsSI("PTRIPLE",EOS+"::"+fluid), CP.PropsSI("PCRIT",EOS+"::"+fluid),2000)
+
+        rhoLiq=CP.PropsSI("D","P",Psat,"Q",0,EOS+"::"+fluid)
+        rhoVap=CP.PropsSI("D","P",Psat,"Q",1,EOS+"::"+fluid)
+
+        eLiq=CP.PropsSI("U","P",Psat,"Q",0,EOS+"::"+fluid)
+        eVap=CP.PropsSI("U","P",Psat,"Q",1,EOS+"::"+fluid)
+
+        rho_sat=np.concatenate((rhoLiq[:-1],np.flip(rhoVap)))
+        e_sat=np.concatenate((eLiq[:-1],np.flip(eVap)))
+        sat_curve=np.column_stack((rho_sat,e_sat))
 
         # Load initial fluid data and scale it
         fluid_data_norm = self.__LoadFluidData()
@@ -272,13 +331,15 @@ class SU2TableGenerator_NICFD:
         RefPoints=np.loadtxt(LoadRef,skiprows=1,usecols=(0,1),delimiter=",",dtype=float)
         mask = np.isfinite(RefPoints).all(axis=1) 
         RefPoints_clean=RefPoints[mask, :]  
-        ix_ref_TH_transf=self.__ApplyRefinement_exp(fluid_data_coarse, RefPoints_clean)
+        ix_ref_TH_transf, ix_ref_TH_transf_add, ix_ref_TH_transf_add_sat=self.__ApplyRefinement_exp(fluid_data_coarse, RefPoints_clean, sat_curve)
 
         # Regenerate table including refinement locations
         rhoe_norm_mesh = fluid_data_norm[:, [EntropicVars.Density.value, EntropicVars.Energy.value]]
         ix_ref=np.union1d(ix_ref_user,ix_ref_TH_transf).astype(np.int64)
         rhoe_norm_ref = rhoe_norm_mesh[ix_ref, :]
-        rhoe_mesh_norm = self.__Compute2DMesh(rhoe_norm, ref_pts=rhoe_norm_ref,show=True)
+        rhoe_norm_ref_add = rhoe_norm_mesh[ix_ref_TH_transf_add, :]
+        rhoe_norm_ref_add_sat = rhoe_norm_mesh[ix_ref_TH_transf_add_sat, :]
+        rhoe_mesh_norm = self.__Compute2DMesh(rhoe_norm, ref_pts=rhoe_norm_ref,ref_pts_add=rhoe_norm_ref_add, ref_pts_add_sat=rhoe_norm_ref_add_sat, show=True)
 
         # Extract thermodynamic state variables of refined table
         fluid_data_norm_ref = np.zeros([len(rhoe_mesh_norm), EntropicVars.N_STATE_VARS.value])
@@ -309,14 +370,21 @@ class SU2TableGenerator_NICFD:
         i_rho=self.LuT_var_index("Density")
         i_e=self.LuT_var_index("Energy")
 
+
         X_Data=self._table_nodes[:,i_rho]
         Y_Data=self._table_nodes[:,i_e]*1e-3
         
         ax.scatter(X_Data, Y_Data, s=5, c="blue", label="Table nodes")
         ax.plot(RefPoints_clean[:,0], RefPoints_clean[:,1]*1e-3, "-r", label="Ref exp")
 
+        ax.plot(sat_curve[:,0],sat_curve[:,1]*1e-3,"k", label="Sat")
+        #ax.plot(rhoVap,eVap,"k")
+
         ax.set_xlabel("rho [kg/m3]")
         ax.set_ylabel("e [kJ/kg]")
+
+        ax.set_xlim(np.min(X_Data),np.max(X_Data))
+        ax.set_ylim(np.min(Y_Data),np.max(Y_Data))
 
         ax.legend(loc="lower right")
 
@@ -484,7 +552,6 @@ class SU2TableGenerator_NICFD:
         fluid_vars = [a.name for a in EntropicVars][:-1]
         for TD_var, val_min, val_max in zip(self.refinement_vars, self.refinement_norm_min, self.refinement_norm_max):
             norm_data_var = fluid_data_norm_ref[:, fluid_vars.index(TD_var)]
-
             ix = np.argwhere(np.logical_and(norm_data_var>=val_min, norm_data_var<=val_max))[:,0]
             ix_ref = np.append(ix_ref, ix)
         if len(ix_ref) > 0:
@@ -492,7 +559,67 @@ class SU2TableGenerator_NICFD:
         else:
             return []
 
-    def __ApplyRefinement_exp(self, fluid_data_coarse:np.ndarray[float], ref_points:np.ndarray[float]):
+    
+
+    def __cross2(self, a, b):
+        return a[0]*b[1] - a[1]*b[0]
+
+    def __seg_intersect(self, p, p2, q, q2, eps=1e-12):
+        """
+        Intersection between two segments p->p2 e q->q2.
+        """
+        r = p2 - p
+        s = q2 - q
+        rxs = self.__cross2(r, s)
+        qp = q - p
+
+        if abs(rxs) < eps:
+            return False, None, None, None  
+
+        t = self.__cross2(qp, s) / rxs
+        u = self.__cross2(qp, r) / rxs
+
+        if -eps <= t <= 1+eps and -eps <= u <= 1+eps:
+            pt = p + t*r
+            return True, t, u, pt
+        return False, None, None, None
+
+    def __polyline_intersections(self, A, B, eps=1e-12, dedup_tol=1e-9):
+        """
+        Return the dict list: {iA,iB,tA,tB,P}
+        where iA is the index of the segment A[iA]->A[iA+1], the same for B.
+        """
+        A = np.asarray(A, dtype=float)
+        B = np.asarray(B, dtype=float)
+
+        hits = []
+        for iA in range(len(A)-1):
+            p, p2 = A[iA], A[iA+1]
+            for iB in range(len(B)-1):
+                q, q2 = B[iB], B[iB+1]
+                ok, t, u, pt = self.__seg_intersect(p, p2, q, q2, eps=eps)
+                if ok:
+                    hits.append({"iA": iA, "iB": iB, "tA": t, "tB": u, "P": pt})
+
+        # Avoid to count an index two times if the intersection correspond to one vertex
+        if not hits:
+            return []
+
+        pts = np.vstack([h["P"] for h in hits])
+        keep = []
+        used = np.zeros(len(hits), dtype=bool)
+
+        for k in range(len(hits)):
+            if used[k]:
+                continue
+            d = np.linalg.norm(pts - pts[k], axis=1)
+            same = d < dedup_tol
+            used[same] = True
+            keep.append(hits[k])
+
+        return keep
+
+    def __ApplyRefinement_exp(self, fluid_data_coarse:np.ndarray[float], ref_points:np.ndarray[float], sat_curve:np.ndarray[float]):
 
         rho_low_mult=self._LowMult_Density
         rho_up_mult=self._HighMult_Density
@@ -504,26 +631,78 @@ class SU2TableGenerator_NICFD:
         rho_up_mult_ref=self._HighMult_Density_ref
 
         rho_limit=self._Density_ref_value
+        rho_limit_finer=self._Density_finer_ref_value
 
         ix_ref = np.array([],dtype=np.int64)
+        ix_ref_add = np.array([],dtype=np.int64)
+        ix_ref_add_sat = np.array([],dtype=np.int64)
         fluid_vars = [a.name for a in EntropicVars][:-1]
+
         Density_Data = fluid_data_coarse[:, fluid_vars.index("Density")]
         Energy_Data = fluid_data_coarse[:, fluid_vars.index("Energy")]
+
         for TH in zip(ref_points[:,0], ref_points[:,1]):
             if TH[0]<=rho_limit:
                 ix = np.argwhere(np.logical_and(np.logical_and(Density_Data>=TH[0]*rho_low_mult_ref, Density_Data<=rho_up_mult_ref*TH[0]), \
                              np.logical_and(Energy_Data>=TH[1]*e_low_mult, Energy_Data<=e_up_mult*TH[1])))[:,0]
+                ix_ref_add = np.append(ix_ref_add, ix)
+            
+            elif TH[0]>rho_limit and TH[0]<=rho_limit_finer:
+                ix = np.argwhere(np.logical_and(np.logical_and(Density_Data>=TH[0]*rho_low_mult, Density_Data<=rho_up_mult*TH[0]), \
+                             np.logical_and(Energy_Data>=TH[1]*e_low_mult, Energy_Data<=e_up_mult*TH[1])))[:,0]
+                ix_ref_add = np.append(ix_ref_add, ix)
 
             else:
                 ix = np.argwhere(np.logical_and(np.logical_and(Density_Data>=TH[0]*rho_low_mult, Density_Data<=rho_up_mult*TH[0]), \
                              np.logical_and(Energy_Data>=TH[1]*e_low_mult, Energy_Data<=e_up_mult*TH[1])))[:,0]
                 
-            ix_ref = np.append(ix_ref, ix)
+                ix_ref = np.append(ix_ref, ix)
 
-        if len(ix_ref) > 0:
-            return np.unique(ix_ref)
+        ints = self.__polyline_intersections(ref_points, sat_curve)
+        ix_sat = [d["iA"] + (d["tA"] > 0.5) for d in ints]
+
+        if len(ix_sat)==2:
+            ix = np.argwhere(np.logical_and(np.logical_and(Density_Data>=ref_points[ix_sat[0],0]*0.99, Density_Data<=1.01*ref_points[ix_sat[0],0]), \
+                            np.logical_and(Energy_Data>=ref_points[ix_sat[0],1]*0.99, Energy_Data<=1.01*ref_points[ix_sat[0],1])))[:,0]
+                
+            ix_ref_add_sat = np.append(ix_ref_add_sat, ix)
+
+            ix = np.argwhere(np.logical_and(np.logical_and(Density_Data>=ref_points[ix_sat[1],0]*0.96, Density_Data<=1.04*ref_points[ix_sat[1],0]), \
+                            np.logical_and(Energy_Data>=ref_points[ix_sat[1],1]*0.96, Energy_Data<=1.04*ref_points[ix_sat[1],1])))[:,0]
+                
+            ix_ref_add_sat = np.append(ix_ref_add_sat, ix)
+
+        elif len(ix_sat)==1:
+            ix = np.argwhere(np.logical_and(np.logical_and(Density_Data>=ref_points[ix_sat[0],0]*0.975, Density_Data<=1.025*ref_points[ix_sat[0],0]), \
+                            np.logical_and(Energy_Data>=ref_points[ix_sat[0],1]*0.975, Energy_Data<=1.025*ref_points[ix_sat[0],1])))[:,0]
+                
+            ix_ref_add_sat = np.append(ix_ref_add_sat, ix)
+
+        if len(ix_ref) > 0 and len(ix_ref_add) > 0 and len(ix_ref_add_sat) > 0:
+            ix_ref_add = np.setdiff1d(np.unique(ix_ref_add), np.unique(ix_ref_add_sat), assume_unique=True)
+            ix_ref = np.setdiff1d(np.unique(ix_ref), np.union1d(ix_ref_add, ix_ref_add_sat), assume_unique=True)
+            return np.unique(ix_ref), np.unique(ix_ref_add), np.unique(ix_ref_add_sat)
+        
+        elif len(ix_ref) > 0 and len(ix_ref_add)>0 and len(ix_ref_add_sat)==0:
+            return np.unique(ix_ref), np.unique(ix_ref_add), []
+        
+        elif len(ix_ref) == 0 and len(ix_ref_add)>0 and len(ix_ref_add_sat)>0:
+            return [], np.unique(ix_ref_add), np.unique(ix_ref_add_sat)
+
+        elif len(ix_ref) > 0 and len(ix_ref_add)==0 and len(ix_ref_add_sat)>0:
+            return np.unique(ix_ref), [], np.unique(ix_ref_add_sat)
+        
+        elif len(ix_ref) > 0 and len(ix_ref_add)==0 and len(ix_ref_add_sat)==0:
+            return np.unique(ix_ref), [], []
+        
+        elif len(ix_ref) == 0 and len(ix_ref_add) > 0 and len(ix_ref_add_sat)==0:
+           return [],np.unique(ix_ref_add), []
+
+        elif len(ix_ref) == 0 and len(ix_ref_add)== 0 and len(ix_ref_add_sat)>0:
+            return [],[], np.unique(ix_ref_add_sat)
+
         else:
-            return []
+            return [], [], []
 
     def WriteTableFile(self, MainFolder:str=None,output_filepath:str=None):
         """
@@ -688,9 +867,13 @@ class SU2TableGenerator_NICFD:
 
         # Local refinment options
         RefMaxCell=self._refined_cell_size
+        RefMaxCell_finer=self._finer_refined_cell_size
+        RefMaxCell_finer_sat=self._finer_sat_refined_cell_size
         RefRadius=self._refinement_radius
 
         output_file.write("%s%.9f \n" %("Maximum refined cell size=",RefMaxCell))
+        output_file.write("%s%.9f \n" %("Maximum finer refined cell size=",RefMaxCell_finer))
+        output_file.write("%s%.9f \n" %("Maximum refined cell size near saturated curve=",RefMaxCell_finer_sat))
         output_file.write("%s%.9f \n" %("Refinment radius=",RefRadius))
 
         # Local refinment
@@ -716,6 +899,7 @@ class SU2TableGenerator_NICFD:
         rho_up_mult_ref=self._HighMult_Density_ref
 
         rho_limit=self._Density_ref_value
+        rho_lim_finer=self._Density_finer_ref_value
 
         output_file.write("%s%.9f \n" %("Density lower bound multiplier=",rho_low_mult))
         output_file.write("%s%.9f \n" %("Density upper bound multiplier=",rho_up_mult))
@@ -727,6 +911,7 @@ class SU2TableGenerator_NICFD:
         output_file.write("%s%.9f \n" %("Refined density upper bound multiplier=",rho_up_mult_ref))
 
         output_file.write("%s%.9f%s \n" %("Density below which larger bounds are used=",rho_limit," [kg/m3]"))
+        output_file.write("%s%.9f%s \n" %("Density below which finer refinment is applied=",rho_lim_finer," [kg/m3]"))
 
         output_file.close()
 

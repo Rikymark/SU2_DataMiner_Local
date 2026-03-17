@@ -9,12 +9,12 @@ config = Config_NICFD()
 config.SetEquationOfState("REFPROP") # Available CoolProp with "HEOS" or REFPROP with "REFPROP"
 config.SetFluid("MM")
 
-MainFolder="MM/LuT_2Phase_Adapt_Ref_Low_Energy_Ref_V2_Fine" # folder where all the data are saved
-PlotFolder="CompPlot_2Phase_Adapt_Ref_Low_Energy_Ref_V2_Fine" # Folder where the fluid data plots are saved
-PlotFolderLuT="CompLuT_LuT_2Phase_Adapt_Ref_Low_Energy_Ref_V2_Fine" # Folder where the LUT plots are saved
-outpath="LuT_2Phase_Adapt_Ref_Low_Energy_Ref_V2_Fine.vtk" # Name of the file where the LuT are saved to be opened by Paraview
-LuTName="LuT_2Phase_Adapt_Ref_Low_Energy_Ref_V2_Fine.drg"      # # Name of the file where the LuT are saved as .drg
-RefFile="TROVA_New_Nozzle_Des_Expected_Exp.txt"
+MainFolder="MM/LUT_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V4" # folder where all the data are saved
+PlotFolder="CompPlot_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V4" # Folder where the fluid data plots are saved
+PlotFolderLuT="CompLuT_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V4" # Folder where the LUT plots are saved
+outpath="LUT_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V4.vtk" # Name of the file where the LuT are saved to be opened by Paraview
+LuTName="LUT_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V4.drg"      # # Name of the file where the LuT are saved as .drg
+RefFile="LuT_Ref_Data.csv"
 
 PlotCompData=False # If True plot the data computed by the DataMining operation
 PlotLuTData=True # If True plot the data saved in the LuT
@@ -61,8 +61,8 @@ else:
 
     if not config.GetAutoRange():
         
-        config.SetDensityBounds(2.5,515)
-        config.SetEnergyBounds(200e3, 300e3)
+        config.SetDensityBounds(0.5,450)
+        config.SetEnergyBounds(200e3, 365e3)
 
 config.SetdPFD(1) # Pa
 config.SetdhFD(1) # J/kg
@@ -100,7 +100,7 @@ lut.write_TxT_config(config, MainFolder)
 
 # Generate and save table
 LoadRef=f"{MainFolder}/{RefFile}"
-lut.GenerateTable(LoadRef, MainFolder)
+lut.GenerateTable(LoadRef, MainFolder, config)
 
 if PlotLuTData:
     lut.PlotContoursLuT(config, Variables_LuT, Unit_LuT, MainFolder,PlotFolderLuT)
