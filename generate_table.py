@@ -7,14 +7,14 @@ import os
 config = Config_NICFD()
 # Select the equation of state and the fluid
 config.SetEquationOfState("REFPROP") # Available CoolProp with "HEOS" or REFPROP with "REFPROP"
-config.SetFluid("MM")
+config.SetFluid("CO2")
 
-MainFolder="MM/LUT_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V4" # folder where all the data are saved
-PlotFolder="CompPlot_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V4" # Folder where the fluid data plots are saved
-PlotFolderLuT="CompLuT_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V4" # Folder where the LUT plots are saved
-outpath="LUT_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V4.vtk" # Name of the file where the LuT are saved to be opened by Paraview
-LuTName="LUT_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V4.drg"      # # Name of the file where the LuT are saved as .drg
-RefFile="LuT_Ref_Data.csv"
+MainFolder="CO2/LUT_Nakagawa_Case_a_HighP" # folder where all the data are saved
+PlotFolder="CompPlot_Nakagawa_Case_a_HighP" # Folder where the fluid data plots are saved
+PlotFolderLuT="CompLuT_Nakagawa_Case_a_HighP" # Folder where the LUT plots are saved
+outpath="LUT_Nakagawa_Case_a_HighP.vtk" # Name of the file where the LuT are saved to be opened by Paraview
+LuTName="LUT_Nakagawa_Case_a_HighP.drg"      # # Name of the file where the LuT are saved as .drg
+RefFile="Nakagawa_Nozzle_Case_a_HighP.txt"
 
 PlotCompData=False # If True plot the data computed by the DataMining operation
 PlotLuTData=True # If True plot the data saved in the LuT
@@ -61,8 +61,8 @@ else:
 
     if not config.GetAutoRange():
         
-        config.SetDensityBounds(0.5,450)
-        config.SetEnergyBounds(200e3, 365e3)
+        config.SetDensityBounds(120,800)
+        config.SetEnergyBounds(240e3, 315e3)
 
 config.SetdPFD(1) # Pa
 config.SetdhFD(1) # J/kg

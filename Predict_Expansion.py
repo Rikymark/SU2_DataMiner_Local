@@ -45,16 +45,16 @@ def comp_expected_exp(Pin,h_in,Pout,Model,fluid,n_discr, SaveFolder, SaveFile):
 if __name__ == "__main__":
 
     ######## USER'S INPUTS ########
-    fluid = "MM"
+    fluid = "CO2"
     Model="REFPROP"
-    Pin=18.094 # bar
-    Tin=249.836 # degC
+    Pin=91 # bar
+    Tin=37 # degC
     TwoPH_inlet=False # If true, h_in is employed instead of Tin to compute the total inlet conditions
     h_in=None
-    Pout=1.8094 # bar
+    Pout=25.9 # bar
 
-    SaveFolder="ORCHID_Nozzle"
-    SaveFile="ORCHID_Nozzle_Expected_Exp.txt"
+    SaveFolder="Nakagawa_Nozzle"
+    SaveFile="Nakagawa_Nozzle_Case_a_HighP.txt"
 
     n_discr=1000 # Number of points for the discretization of the expansion process
 

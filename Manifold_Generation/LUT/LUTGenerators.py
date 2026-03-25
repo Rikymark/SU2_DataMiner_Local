@@ -63,22 +63,23 @@ class SU2TableGenerator_NICFD:
     ######## START USER-INPUT ########
     _base_cell_size:float = 2e-2      # Table level base cell size.
 
-    _refined_cell_size:float = 2e-3 #2.5e-3#1.5e-3   # Table level refined cell size. # old value is 5e-3, standard for adapted ref 2e-3
-    _finer_refined_cell_size:float = 6e-4 # Refinment for finer zones
-    _finer_sat_refined_cell_size:float = 6e-4 # Refinment for finer zones near saturation curve
-    _refinement_radius:float = 5e-2 #5e-2     # Table level radius within which refinement is applied. # original value is 1e-2
+    _refined_cell_size:float = 1.5e-3 #2.5e-3#1.5e-3   # Table level refined cell size. # old value is 5e-3, standard for adapted ref 2e-3
+    _finer_refined_cell_size:float = 5e-4 # Refinment for finer zones
+    _finer_sat_refined_cell_size:float = 5e-4 # Refinment for finer zones near saturation curve
+    _refinement_radius:float = 3e-2 #5e-2     # Table level radius within which refinement is applied. # original value is 1e-2
 
-    _LowMult_Density:float=0.98  # Adaptive refinment density lower bound is computed as _LowMult_Density*Density[i]
-    _HighMult_Density:float=1.02 # Adaptive refinment density upper bound is computed as _HighMult_Density*Density[i]
+    _LowMult_Density:float=0.99  # Adaptive refinment density lower bound is computed as _LowMult_Density*Density[i]
+    _HighMult_Density:float=1.01 # Adaptive refinment density upper bound is computed as _HighMult_Density*Density[i]
 
-    _LowMult_Energy:float=0.98 # Adaptive refinment energy lower bound is computed as _LowMult_Energy*Energy[i]
-    _HighMult_Energy:float=1.02 # Adaptive refinment energy upper bound is computed as _HighMult_Energy*Energy[i]
+    _LowMult_Energy:float=0.99 # Adaptive refinment energy lower bound is computed as _LowMult_Energy*Energy[i]
+    _HighMult_Energy:float=1.01 # Adaptive refinment energy upper bound is computed as _HighMult_Energy*Energy[i]
 
     _LowMult_Density_ref:float=0.1 # Adaptive refinment density lower bound is computed as _LowMult_Density_ref*Density[i] when density is lower than _Density_ref_value
     _HighMult_Density_ref:float=1.2 # Adaptive refinment density upper bound is computed as _HighMult_Density_ref*Density[i] when density is lower than _Density_ref_value
 
-    _Density_ref_value:float=5 # Density value below which _LowMult_Density_ref and _HighMult_Density_ref are employed as multiplier
-    _Density_finer_ref_value:float=9 # Density value below the finer refinment is activated
+    _Density_ref_value:float=160 # Density value below which _LowMult_Density_ref and _HighMult_Density_ref are employed as multiplier
+    _Density_finer_ref_value:float=160 # Density value below the finer refinment is activated
+    _Sat_Curve_Discretization:float=0.5 # Define the saturation curve spacing as _Sat_Curve_Discretization*_base_cell_size
     ######## END USER-INPUT ########
 
     _table_nodes = []       # Progress variable, total enthalpy, and mixture fraction node values for each table level.
@@ -153,8 +154,17 @@ class SU2TableGenerator_NICFD:
    
         
         return fluid_data_norm
-        
-    def __Compute2DMesh(self, points:np.ndarray[float], ref_pts:np.ndarray[float]=[],ref_pts_add:np.ndarray[float]=[],ref_pts_add_sat:np.ndarray[float]=[] ,show:bool=False):
+
+    def map_tags(self,tags,nodeTags_sorted,order):
+        tags = np.asarray(tags, dtype=np.int64).ravel()
+        pos = np.searchsorted(nodeTags_sorted, tags)
+        ok = (pos < len(nodeTags_sorted)) & (nodeTags_sorted[pos] == tags)
+        if not np.all(ok):
+            missing = np.unique(tags[~ok])
+            raise RuntimeError(f"Node tags non trovati in getNodes(): {missing[:20]} (tot missing={len(missing)})")
+        return order[pos]
+       
+    def __Compute2DMesh(self, points:np.ndarray[float],sat_curve_norm_clipped:np.ndarray[float]=[], ref_pts:np.ndarray[float]=[],ref_pts_add:np.ndarray[float]=[],ref_pts_add_sat:np.ndarray[float]=[] , show:bool=False):
         
         # Create concave hull of normalized table coordinates.
         XY_hull = concave_hull(np.unique(points,axis=0), length_threshold=1e-1)
@@ -181,6 +191,15 @@ class SU2TableGenerator_NICFD:
         gmsh.model.add("table_level")
         factory = gmsh.model.geo
 
+        gmsh.option.setNumber("Mesh.RecombineAll", 0)
+        gmsh.option.setNumber("Mesh.Recombine3DAll", 0)
+
+        # Force triangular algorithm (Frontal-Delaunay)
+        gmsh.option.setNumber("Mesh.Algorithm", 6)
+
+        # Avoid change in the element type
+        gmsh.option.setNumber("Mesh.SubdivisionAlgorithm", 0)
+
         # Create hull points
         for i in range(int(len(XY_hull))):
             hull_pts.append(factory.addPoint(XY_hull[i, 0], XY_hull[i, 1], 0, self._base_cell_size))
@@ -193,7 +212,7 @@ class SU2TableGenerator_NICFD:
 
         # Create a 2D plane of the enclosed space
         curvloop = factory.addCurveLoop(hull_lines)
-        factory.addPlaneSurface([curvloop])
+        SurfaceTag=factory.addPlaneSurface([curvloop])
 
         # Apply refinement points
         ref_pt_ids = []
@@ -213,7 +232,21 @@ class SU2TableGenerator_NICFD:
             for i in range(len(ref_pts_add_sat)):
                 ref_pt_ids_add_sat.append(factory.addPoint(ref_pts_add_sat[i,0], ref_pts_add_sat[i, 1], 0.0))
 
-        
+        # Add the saturation curve as a mesh curve
+        #occ = gmsh.model.occ
+
+        sat_tags = []
+
+        for sat in sat_curve_norm_clipped:
+            sat_resampled=self.resample_polyline_by_step(sat, self._Sat_Curve_Discretization*self._base_cell_size)
+            pt_tags = [factory.addPoint(float(rho), float(e), 0.0) for rho, e in sat_resampled]
+
+            sat_line=[factory.addLine(pt_tags[i], pt_tags[i+1]) for i in range(len(pt_tags)-1)]
+            sat_tags.extend(sat_line)
+
+        factory.synchronize()
+
+        gmsh.model.mesh.embed(1, sat_tags, 2, SurfaceTag)
 
         # Apply conditional refinement, where the refined cell size is applied in proximity to the refinement points
         gmsh.model.mesh.field.add("Distance", 1)
@@ -254,18 +287,57 @@ class SU2TableGenerator_NICFD:
         gmsh.model.mesh.field.add("Min", 7)
         gmsh.model.mesh.field.setNumbers(7, "FieldsList", [2, 4, 6])
         gmsh.model.mesh.field.setAsBackgroundMesh(7)
-
+        
         factory.synchronize()
 
-        # Generate 2D mesh and extract table nodes
+        # Generate 2D mesh and extract table nodes+connectivity
         gmsh.model.mesh.generate(2)
+        gmsh.write("gmsh_mesh.vtk")   # o .msh / .vtu
         if show:
             gmsh.fltk.run()
-        nodes = gmsh.model.mesh.getNodes(dim=2, tag=-1, includeBoundary=True, returnParametricCoord=False)[1]
+
+        # Global nodes
+        nodeTags, coords, _ = gmsh.model.mesh.getNodes()  
+        nodeTags = np.asarray(nodeTags, dtype=np.int64)
+        MeshPoints = np.asarray(coords, dtype=float).reshape(-1, 3)[:, :2]
+
+        order = np.argsort(nodeTags)
+        nodeTags_sorted = nodeTags[order]
+
+        # 2) 2D elements
+        if SurfaceTag is None:
+            elemTypes, _, elemNodeTags = gmsh.model.mesh.getElements(2)
+        else:
+            elemTypes, _, elemNodeTags = gmsh.model.mesh.getElements(2, SurfaceTag)
+
+        tris = []
+        quads = []
+
+        for et, nodes_flat in zip(elemTypes, elemNodeTags):
+            if et == 2:  # triangles with 3 nodes
+                tri_tags = np.asarray(nodes_flat, dtype=np.int64).reshape(-1, 3)
+                tris.append(self.map_tags(tri_tags, nodeTags_sorted,order).reshape(-1, 3))
+            elif et == 3:  # quad with 4 nodes
+                quad_tags = np.asarray(nodes_flat, dtype=np.int64).reshape(-1, 4)
+                quads.append(self.map_tags(quad_tags, nodeTags_sorted,order).reshape(-1, 4))
+
+        tris = np.vstack(tris) if tris else np.zeros((0, 3), dtype=np.int64)
+
+        if quads:
+            quads = np.vstack(quads)
+            # split quad -> 2 tri: (0,1,2) + (0,2,3)
+            tris = np.vstack([
+                tris,
+                quads[:, [0, 1, 2]],
+                quads[:, [0, 2, 3]],
+            ])
+
+        #nodes = gmsh.model.mesh.getNodes(dim=2, tag=-1, includeBoundary=True, returnParametricCoord=False)[1]
         gmsh.finalize()
-        MeshPoints = np.array([nodes[::3], nodes[1::3]]).T
-        return MeshPoints
-    
+        #MeshPoints = np.array([nodes[::3], nodes[1::3]]).T
+
+        return MeshPoints, tris
+        
     
     def __CalcMeshData(self, fluid_data_mesh:np.ndarray[float]):
         """Calculate the fluid thermodynamic state variables for the table nodes
@@ -285,10 +357,129 @@ class SU2TableGenerator_NICFD:
                 else:
                     fluid_data_out[i, :] = None
             except:
+                print(f"The properties computation has failed in the point rho={fluid_data_mesh[i, EntropicVars.Density.value]} kg/m3, \
+                      e={fluid_data_mesh[i, EntropicVars.Energy.value]} J/kg")
                 fluid_data_out[i, :] = None
         fluid_data_out = fluid_data_out[~np.isnan(fluid_data_out[:,0]),:]
         return fluid_data_out
     
+    def Normalize_Sat_Curve(self, sat_curve,config,eps=1e-6):
+        
+        sat_curve_norm=np.copy(sat_curve)
+        rho_bound=config.GetDensityBounds()
+        e_bound=config.GetEnergyBounds()
+        sat_curve_norm[:,0]=[(rho-rho_bound[0])/(rho_bound[1]-rho_bound[0]) for rho in sat_curve[:,0]]
+        sat_curve_norm[:,1]=[(e-e_bound[0])/(e_bound[1]-e_bound[0])  for e in sat_curve[:,1]]
+        sat_curve_clipped=self.clip_polyline_to_rect(sat_curve, rho_bound[0]+eps, rho_bound[1]-eps, e_bound[0]+eps, e_bound[1]-eps)
+        sat_curve_norm_clipped=self.clip_polyline_to_rect(sat_curve_norm, 0+eps, 1-eps, 0+eps, 1-eps)
+
+        return sat_curve_norm, sat_curve_norm_clipped, sat_curve_clipped
+
+    def clip_segment_liang_barsky(self, p0, p1, xmin, xmax, ymin, ymax, eps=1e-12):
+        """
+        Clip the saturation curve when it is outside the bounds
+        Return None if outside, if inside (q0, q1) are the clipped boundaries.
+        """
+        x0, y0 = p0
+        x1, y1 = p1
+        dx = x1 - x0
+        dy = y1 - y0
+
+        p = np.array([-dx, dx, -dy, dy], dtype=float)
+        q = np.array([x0 - xmin, xmax - x0, y0 - ymin, ymax - y0], dtype=float)
+
+        u1, u2 = 0.0, 1.0
+        for pi, qi in zip(p, q):
+            if abs(pi) < eps:
+                if qi < 0:
+                    return None  
+                continue
+            u = qi / pi
+            if pi < 0:
+                if u > u1: u1 = u
+            else:
+                if u < u2: u2 = u
+            if u1 - u2 > eps:
+                return None
+
+        q0 = np.array([x0 + u1*dx, y0 + u1*dy])
+        q1 = np.array([x0 + u2*dx, y0 + u2*dy])
+        return q0, q1
+
+    def clip_polyline_to_rect(self, pts, xmin, xmax, ymin, ymax, tol=1e-9):
+        """
+        Clip a polyline pts (n,2) at the 2D mesh.
+        Return a list of internal polylines (each (k,2), k>=2).
+        Can manage numerous intersections (2, 4 or more).
+        """
+        pts = np.asarray(pts, dtype=float)
+        if len(pts) < 2:
+            return []
+
+        out_segments = []
+        current = None  # lista di punti del tratto in costruzione
+
+        for i in range(len(pts)-1):
+            p0 = pts[i]
+            p1 = pts[i+1]
+            clipped = self.clip_segment_liang_barsky(p0, p1, xmin, xmax, ymin, ymax)
+            if clipped is None:
+                # close a path under construction
+                if current is not None and len(current) >= 2:
+                    out_segments.append(np.array(current))
+                current = None
+                continue
+
+            q0, q1 = clipped
+
+            if current is None:
+                current = [q0, q1]
+            else:
+                # Avoid duplicates when the new segment is clipped
+                if np.linalg.norm(current[-1] - q0) > tol:
+                    current.append(q0)
+                current.append(q1)
+
+        if current is not None and len(current) >= 2:
+            out_segments.append(np.array(current))
+
+        # remove the equal/near-equal consecutive points
+        cleaned = []
+        for seg in out_segments:
+            keep = [seg[0]]
+            for k in range(1, len(seg)):
+                if np.linalg.norm(seg[k] - keep[-1]) > tol:
+                    keep.append(seg[k])
+            if len(keep) >= 2:
+                cleaned.append(np.array(keep))
+        return cleaned
+
+    def resample_polyline_by_step(self, P, ds):
+        """Resample a polyline P (n,2) with step ~ ds. Return (m,2)."""
+        P = np.asarray(P, float)
+        if len(P) < 2:
+            return P.copy()
+
+        seg = P[1:] - P[:-1]
+        L = np.linalg.norm(seg, axis=1)
+        s = np.concatenate([[0.0], np.cumsum(L)])
+        total = s[-1]
+        if total == 0:
+            return P[[0]].copy()
+
+        # points along the curvilinear abscissa
+        n = int(np.floor(total / ds))
+        samp = np.linspace(0.0, total, n + 2)  
+
+        out = []
+        j = 0
+        for u in samp:
+            while j < len(L) - 1 and s[j+1] < u:
+                j += 1
+            t = (u - s[j]) / (L[j] + 1e-30)
+            out.append(P[j] + t * seg[j])
+        return np.array(out)
+
     def GenerateTable(self, LoadRef, MainFolder, config):
         """Initiate table generation process
         """
@@ -308,13 +499,14 @@ class SU2TableGenerator_NICFD:
         rho_sat=np.concatenate((rhoLiq[:-1],np.flip(rhoVap)))
         e_sat=np.concatenate((eLiq[:-1],np.flip(eVap)))
         sat_curve=np.column_stack((rho_sat,e_sat))
+        sat_curve_norm, sat_curve_norm_clipped, sat_curve_clipped=self.Normalize_Sat_Curve(sat_curve, config)
 
         # Load initial fluid data and scale it
         fluid_data_norm = self.__LoadFluidData()
         rhoe_norm = fluid_data_norm[:, [EntropicVars.Density.value, EntropicVars.Energy.value]]
 
         # Generate initial coarse table of fluid data
-        rhoe_mesh_norm_coarse = self.__Compute2DMesh(rhoe_norm)
+        rhoe_mesh_norm_coarse, Tria_coarse = self.__Compute2DMesh(rhoe_norm,sat_curve_norm_clipped=sat_curve_norm_clipped)
 
         # Calculate thermodynamic state variables of initial table nodes
         fluid_data_norm_coarse = np.zeros([len(rhoe_mesh_norm_coarse), EntropicVars.N_STATE_VARS.value])
@@ -331,15 +523,24 @@ class SU2TableGenerator_NICFD:
         RefPoints=np.loadtxt(LoadRef,skiprows=1,usecols=(0,1),delimiter=",",dtype=float)
         mask = np.isfinite(RefPoints).all(axis=1) 
         RefPoints_clean=RefPoints[mask, :]  
-        ix_ref_TH_transf, ix_ref_TH_transf_add, ix_ref_TH_transf_add_sat=self.__ApplyRefinement_exp(fluid_data_coarse, RefPoints_clean, sat_curve)
+        ix_ref_TH_transf, ix_ref_TH_transf_add, ix_ref_TH_transf_add_sat=self.__ApplyRefinement_exp(fluid_data_coarse, RefPoints_clean, sat_curve_clipped)
 
         # Regenerate table including refinement locations
         rhoe_norm_mesh = fluid_data_norm[:, [EntropicVars.Density.value, EntropicVars.Energy.value]]
         ix_ref=np.union1d(ix_ref_user,ix_ref_TH_transf).astype(np.int64)
         rhoe_norm_ref = rhoe_norm_mesh[ix_ref, :]
         rhoe_norm_ref_add = rhoe_norm_mesh[ix_ref_TH_transf_add, :]
-        rhoe_norm_ref_add_sat = rhoe_norm_mesh[ix_ref_TH_transf_add_sat, :]
-        rhoe_mesh_norm = self.__Compute2DMesh(rhoe_norm, ref_pts=rhoe_norm_ref,ref_pts_add=rhoe_norm_ref_add, ref_pts_add_sat=rhoe_norm_ref_add_sat, show=True)
+        
+        if len(sat_curve_norm_clipped)==2:
+            sat_curve_norm_clipped_merged=np.vstack(sat_curve_norm_clipped[0],sat_curve_norm_clipped[1])
+        elif len(sat_curve_norm_clipped)==1:
+            sat_curve_norm_clipped_merged=np.copy(sat_curve_norm_clipped[0])
+        else:
+            sat_curve_norm_clipped_merged=np.copy(sat_curve_norm)
+
+        sat_curve_ref= sat_curve_norm_clipped_merged[ix_ref_TH_transf_add_sat, :]
+
+        rhoe_mesh_norm, Tria = self.__Compute2DMesh(rhoe_norm, sat_curve_norm_clipped=sat_curve_norm_clipped, ref_pts=rhoe_norm_ref,ref_pts_add=rhoe_norm_ref_add, ref_pts_add_sat=sat_curve_ref, show=True)
 
         # Extract thermodynamic state variables of refined table
         fluid_data_norm_ref = np.zeros([len(rhoe_mesh_norm), EntropicVars.N_STATE_VARS.value])
@@ -349,17 +550,25 @@ class SU2TableGenerator_NICFD:
         fluid_data_ref = self.__CalcMeshData(fluid_data_ref)
 
         # Create triangulation of filtered thermodynamic state data
-        fluid_data_norm_ref = self._fluid_data_scaler.transform(fluid_data_ref)
-        DT = Delaunay(fluid_data_norm_ref[:, [EntropicVars.Density.value,EntropicVars.Energy.value]])
+        #fluid_data_norm_ref = self._fluid_data_scaler.transform(fluid_data_ref)
+        #DT = Delaunay(fluid_data_norm_ref[:, [EntropicVars.Density.value,EntropicVars.Energy.value]])
 
         # Extract triangulation, hull nodes, and table data
-        Tria = DT.simplices 
+        #Tria = DT.simplices 
         HullNodes = concave_hull_indexes(fluid_data_norm_ref[:, [EntropicVars.Density.value,EntropicVars.Energy.value]])
 
         self._table_nodes = fluid_data_ref 
         self._table_connectivity = Tria 
         self._table_hullnodes = HullNodes
         
+        if self._table_connectivity.max() + 1!=len(self._table_nodes):
+            print("WARNING: COOLPROP HAS FAILED IN AT LEAST ONE NODE, TRIANGULATION NOT CONSISTENT")
+            print("len(rhoe_mesh_norm) =", len(rhoe_mesh_norm))
+            print("len(self._table_nodes) =", len(self._table_nodes))
+            print("len(fluid_data_ref) =", len(fluid_data_ref[:,0]))
+            print("conn max =", self._table_connectivity.max())
+            print("expected npts from conn =", self._table_connectivity.max() + 1)
+
         # Add static enthalpy and the specific heat at constant volume
         self.table_vars.append("Enthalpy")
         h = self._table_nodes[:, EntropicVars.Energy.value] + self._table_nodes[:, EntropicVars.p.value] / self._table_nodes[:, EntropicVars.Density.value]
@@ -619,7 +828,7 @@ class SU2TableGenerator_NICFD:
 
         return keep
 
-    def __ApplyRefinement_exp(self, fluid_data_coarse:np.ndarray[float], ref_points:np.ndarray[float], sat_curve:np.ndarray[float]):
+    def __ApplyRefinement_exp(self, fluid_data_coarse:np.ndarray[float], ref_points:np.ndarray[float], sat_curve_clipped:np.ndarray[float]):
 
         rho_low_mult=self._LowMult_Density
         rho_up_mult=self._HighMult_Density
@@ -658,17 +867,29 @@ class SU2TableGenerator_NICFD:
                 
                 ix_ref = np.append(ix_ref, ix)
 
+        if len(sat_curve_clipped)!=0:
+            for i in range(len(sat_curve_clipped)):
+                #ix_ref_add_sat_clipped=np.array([],dtype=np.int64)
+                sat_curve=sat_curve_clipped[i]
+                ints = self.__polyline_intersections(ref_points, sat_curve)
+                ix_sat = [d["iA"] + (d["tA"] > 0.5) for d in ints]
+
+                ix = np.argwhere(np.logical_and(np.logical_and(sat_curve[:,0]>=ref_points[ix_sat[0],0]*0.99, sat_curve[:,0]<=1.01*ref_points[ix_sat[0],0]), \
+                                    np.logical_and(sat_curve[:,1]>=ref_points[ix_sat[0],1]*0.99, sat_curve[:,1]<=1.01*ref_points[ix_sat[0],1])))[:,0]
+                        
+                ix_ref_add_sat=np.append(ix_ref_add_sat,ix)
+        """
         ints = self.__polyline_intersections(ref_points, sat_curve)
         ix_sat = [d["iA"] + (d["tA"] > 0.5) for d in ints]
 
         if len(ix_sat)==2:
-            ix = np.argwhere(np.logical_and(np.logical_and(Density_Data>=ref_points[ix_sat[0],0]*0.99, Density_Data<=1.01*ref_points[ix_sat[0],0]), \
-                            np.logical_and(Energy_Data>=ref_points[ix_sat[0],1]*0.99, Energy_Data<=1.01*ref_points[ix_sat[0],1])))[:,0]
+            ix = np.argwhere(np.logical_and(np.logical_and(sat_curve[:,0]>=ref_points[ix_sat[0],0]*0.99, sat_curve[:,0]<=1.01*ref_points[ix_sat[0],0]), \
+                            np.logical_and(sat_curve[:,1]>=ref_points[ix_sat[0],1]*0.99, sat_curve[:,1]<=1.01*ref_points[ix_sat[0],1])))[:,0]
                 
             ix_ref_add_sat = np.append(ix_ref_add_sat, ix)
 
-            ix = np.argwhere(np.logical_and(np.logical_and(Density_Data>=ref_points[ix_sat[1],0]*0.96, Density_Data<=1.04*ref_points[ix_sat[1],0]), \
-                            np.logical_and(Energy_Data>=ref_points[ix_sat[1],1]*0.96, Energy_Data<=1.04*ref_points[ix_sat[1],1])))[:,0]
+            ix = np.argwhere(np.logical_and(np.logical_and(sat_curve[:,0]>=ref_points[ix_sat[1],0]*0.99, sat_curve[:,0]<=1.01*ref_points[ix_sat[1],0]), \
+                            np.logical_and(sat_curve[:,1]>=ref_points[ix_sat[1],1]*0.99, sat_curve[:,1]<=1.001*ref_points[ix_sat[1],1])))[:,0]
                 
             ix_ref_add_sat = np.append(ix_ref_add_sat, ix)
 
@@ -677,7 +898,7 @@ class SU2TableGenerator_NICFD:
                             np.logical_and(Energy_Data>=ref_points[ix_sat[0],1]*0.975, Energy_Data<=1.025*ref_points[ix_sat[0],1])))[:,0]
                 
             ix_ref_add_sat = np.append(ix_ref_add_sat, ix)
-
+        """
         if len(ix_ref) > 0 and len(ix_ref_add) > 0 and len(ix_ref_add_sat) > 0:
             ix_ref_add = np.setdiff1d(np.unique(ix_ref_add), np.unique(ix_ref_add_sat), assume_unique=True)
             ix_ref = np.setdiff1d(np.unique(ix_ref), np.union1d(ix_ref_add, ix_ref_add_sat), assume_unique=True)
@@ -870,11 +1091,13 @@ class SU2TableGenerator_NICFD:
         RefMaxCell_finer=self._finer_refined_cell_size
         RefMaxCell_finer_sat=self._finer_sat_refined_cell_size
         RefRadius=self._refinement_radius
+        SatCurveDiscr=self._Sat_Curve_Discretization
 
         output_file.write("%s%.9f \n" %("Maximum refined cell size=",RefMaxCell))
         output_file.write("%s%.9f \n" %("Maximum finer refined cell size=",RefMaxCell_finer))
         output_file.write("%s%.9f \n" %("Maximum refined cell size near saturated curve=",RefMaxCell_finer_sat))
         output_file.write("%s%.9f \n" %("Refinment radius=",RefRadius))
+        output_file.write("%s%.9f \n" %("Multiplier that defines the saturation curve discretization=",SatCurveDiscr))
 
         # Local refinment
         output_file.write("%s \n" %("List of refinments applied to the LuT"))

@@ -6,4 +6,8 @@ LuT_*
 *.csv
 TROVA*/
 ORCHID*/
-MM/
+MM/*
+CO2/*
+Lettieri_Nozzle/*
+Nakagawa_Nozzle/*
+*.vtk
