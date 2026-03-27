@@ -64,8 +64,8 @@ class SU2TableGenerator_NICFD:
     _base_cell_size:float = 2e-2      # Table level base cell size.
 
     _refined_cell_size:float = 2e-3 #2.5e-3#1.5e-3   # Table level refined cell size. # old value is 5e-3, standard for adapted ref 2e-3
-    _finer_refined_cell_size:float = 1e-4 # Refinment for finer zones
-    _finer_sat_refined_cell_size:float = 5e-5 # Refinment for finer zones near saturation curve
+    _finer_refined_cell_size:float = 2e-4 # Refinment for finer zones
+    _finer_sat_refined_cell_size:float = 7.5e-5 # Refinment for finer zones near saturation curve
     _refinement_radius:float = 4e-2 #5e-2     # Table level radius within which refinement is applied. # original value is 1e-2
     _refinement_radius_sat_curve:float = 1.5e-3 #5e-2  # Table level radius within which refinement is applied for the points along the sat curve. 
 
@@ -906,8 +906,8 @@ class SU2TableGenerator_NICFD:
                 ints = self.__polyline_intersections(ref_points, sat_curve)
                 ix_sat = [d["iA"] + (d["tA"] > 0.5) for d in ints]
 
-                ix = np.argwhere(np.logical_and(np.logical_and(sat_curve[:,0]>=ref_points[ix_sat[0],0]*0.99, sat_curve[:,0]<=1.01*ref_points[ix_sat[0],0]), \
-                                    np.logical_and(sat_curve[:,1]>=ref_points[ix_sat[0],1]*0.99, sat_curve[:,1]<=1.01*ref_points[ix_sat[0],1])))[:,0]
+                ix = np.argwhere(np.logical_and(np.logical_and(sat_curve[:,0]>=ref_points[ix_sat[0],0]*0.975, sat_curve[:,0]<=1.025*ref_points[ix_sat[0],0]), \
+                                    np.logical_and(sat_curve[:,1]>=ref_points[ix_sat[0],1]*0.975, sat_curve[:,1]<=1.025*ref_points[ix_sat[0],1])))[:,0]
                 if i>0:
                     ix+=len(sat_curve_clipped[i-1])       
                 ix_ref_add_sat=np.append(ix_ref_add_sat,ix)

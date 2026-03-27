@@ -9,11 +9,11 @@ config = Config_NICFD()
 config.SetEquationOfState("REFPROP") # Available CoolProp with "HEOS" or REFPROP with "REFPROP"
 config.SetFluid("MM")
 
-MainFolder="MM/LUT_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V9" # folder where all the data are saved
-PlotFolder="CompPlot_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V9" # Folder where the fluid data plots are saved
-PlotFolderLuT="CompLuT_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V9" # Folder where the LUT plots are saved
-outpath="LUT_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V9.vtk" # Name of the file where the LuT are saved to be opened by Paraview
-LuTName="LUT_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V9.drg"      # # Name of the file where the LuT are saved as .drg
+MainFolder="MM/LUT_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V10" # folder where all the data are saved
+PlotFolder="CompPlot_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V10" # Folder where the fluid data plots are saved
+PlotFolderLuT="CompLuT_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V10" # Folder where the LUT plots are saved
+outpath="LUT_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V10.vtk" # Name of the file where the LuT are saved to be opened by Paraview
+LuTName="LUT_2PH_TET4_EXP_Adapt_Ref_Add_Ref_V10.drg"      # # Name of the file where the LuT are saved as .drg
 RefFile="LuT_Ref_Data.csv"
 
 PlotCompData=False # If True plot the data computed by the DataMining operation
