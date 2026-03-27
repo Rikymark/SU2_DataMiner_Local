@@ -63,22 +63,23 @@ class SU2TableGenerator_NICFD:
     ######## START USER-INPUT ########
     _base_cell_size:float = 2e-2      # Table level base cell size.
 
-    _refined_cell_size:float = 1.5e-3 #2.5e-3#1.5e-3   # Table level refined cell size. # old value is 5e-3, standard for adapted ref 2e-3
-    _finer_refined_cell_size:float = 5e-4 # Refinment for finer zones
-    _finer_sat_refined_cell_size:float = 5e-4 # Refinment for finer zones near saturation curve
-    _refinement_radius:float = 3e-2 #5e-2     # Table level radius within which refinement is applied. # original value is 1e-2
+    _refined_cell_size:float = 2e-3 #2.5e-3#1.5e-3   # Table level refined cell size. # old value is 5e-3, standard for adapted ref 2e-3
+    _finer_refined_cell_size:float = 1e-4 # Refinment for finer zones
+    _finer_sat_refined_cell_size:float = 5e-5 # Refinment for finer zones near saturation curve
+    _refinement_radius:float = 4e-2 #5e-2     # Table level radius within which refinement is applied. # original value is 1e-2
+    _refinement_radius_sat_curve:float = 1.5e-3 #5e-2  # Table level radius within which refinement is applied for the points along the sat curve. 
 
-    _LowMult_Density:float=0.99  # Adaptive refinment density lower bound is computed as _LowMult_Density*Density[i]
-    _HighMult_Density:float=1.01 # Adaptive refinment density upper bound is computed as _HighMult_Density*Density[i]
+    _LowMult_Density:float=0.9985  # Adaptive refinment density lower bound is computed as _LowMult_Density*Density[i]
+    _HighMult_Density:float=1.015 # Adaptive refinment density upper bound is computed as _HighMult_Density*Density[i]
 
-    _LowMult_Energy:float=0.99 # Adaptive refinment energy lower bound is computed as _LowMult_Energy*Energy[i]
-    _HighMult_Energy:float=1.01 # Adaptive refinment energy upper bound is computed as _HighMult_Energy*Energy[i]
+    _LowMult_Energy:float=0.985 # Adaptive refinment energy lower bound is computed as _LowMult_Energy*Energy[i]
+    _HighMult_Energy:float=1.015 # Adaptive refinment energy upper bound is computed as _HighMult_Energy*Energy[i]
 
     _LowMult_Density_ref:float=0.1 # Adaptive refinment density lower bound is computed as _LowMult_Density_ref*Density[i] when density is lower than _Density_ref_value
-    _HighMult_Density_ref:float=1.2 # Adaptive refinment density upper bound is computed as _HighMult_Density_ref*Density[i] when density is lower than _Density_ref_value
+    _HighMult_Density_ref:float=1.1 # Adaptive refinment density upper bound is computed as _HighMult_Density_ref*Density[i] when density is lower than _Density_ref_value
 
-    _Density_ref_value:float=160 # Density value below which _LowMult_Density_ref and _HighMult_Density_ref are employed as multiplier
-    _Density_finer_ref_value:float=160 # Density value below the finer refinment is activated
+    _Density_ref_value:float=5 # Density value below which _LowMult_Density_ref and _HighMult_Density_ref are employed as multiplier
+    _Density_finer_ref_value:float=8 # Density value below the finer refinment is activated
     _Sat_Curve_Discretization:float=0.5 # Define the saturation curve spacing as _Sat_Curve_Discretization*_base_cell_size
     ######## END USER-INPUT ########
 
@@ -281,8 +282,8 @@ class SU2TableGenerator_NICFD:
         gmsh.model.mesh.field.setNumber(6, "InField", 5)
         gmsh.model.mesh.field.setNumber(6, "SizeMin", self._finer_sat_refined_cell_size)
         gmsh.model.mesh.field.setNumber(6, "SizeMax", self._base_cell_size)
-        gmsh.model.mesh.field.setNumber(6, "DistMin", 0.5*self._refinement_radius)
-        gmsh.model.mesh.field.setNumber(6, "DistMax", 1.5*self._refinement_radius)
+        gmsh.model.mesh.field.setNumber(6, "DistMin", 0.5*self._refinement_radius_sat_curve)
+        gmsh.model.mesh.field.setNumber(6, "DistMax", 1.5*self._refinement_radius_sat_curve)
 
         gmsh.model.mesh.field.add("Min", 7)
         gmsh.model.mesh.field.setNumbers(7, "FieldsList", [2, 4, 6])
@@ -348,6 +349,7 @@ class SU2TableGenerator_NICFD:
         :rtype: np.ndarray[float]
         """
         fluid_data_out = fluid_data_mesh.copy()
+        i_None=np.array([],dtype=np.int64)
         for i in range(len(fluid_data_mesh)):
             try:
                 self._DataGenerator.UpdateFluid(fluid_data_mesh[i, EntropicVars.Density.value], fluid_data_mesh[i, EntropicVars.Energy.value])
@@ -359,9 +361,10 @@ class SU2TableGenerator_NICFD:
             except:
                 print(f"The properties computation has failed in the point rho={fluid_data_mesh[i, EntropicVars.Density.value]} kg/m3, \
                       e={fluid_data_mesh[i, EntropicVars.Energy.value]} J/kg")
+                i_None=np.append(i_None,i)
                 fluid_data_out[i, :] = None
         fluid_data_out = fluid_data_out[~np.isnan(fluid_data_out[:,0]),:]
-        return fluid_data_out
+        return fluid_data_out,i_None
     
     def Normalize_Sat_Curve(self, sat_curve,config,eps=1e-6):
         
@@ -480,6 +483,20 @@ class SU2TableGenerator_NICFD:
             out.append(P[j] + t * seg[j])
         return np.array(out)
 
+    def remove_invalid_nodes_from_mesh(self, connectivity, valid_mask, rhoe_mesh_norm):
+
+        conn = np.asarray(connectivity, dtype=np.int64)
+
+        tri_keep = np.all(valid_mask[conn], axis=1)
+        conn2 = conn[tri_keep]
+
+        keep_nodes = np.flatnonzero(valid_mask)
+        old_to_new = -np.ones(len(rhoe_mesh_norm), dtype=np.int64)
+        old_to_new[keep_nodes] = np.arange(len(keep_nodes), dtype=np.int64)
+
+        conn2 = old_to_new[conn2]
+
+        return conn2
     def GenerateTable(self, LoadRef, MainFolder, config):
         """Initiate table generation process
         """
@@ -513,7 +530,7 @@ class SU2TableGenerator_NICFD:
         fluid_data_norm_coarse[:, EntropicVars.Density.value] = rhoe_mesh_norm_coarse[:,0]
         fluid_data_norm_coarse[:, EntropicVars.Energy.value] = rhoe_mesh_norm_coarse[:,1]
         fluid_data_coarse = self._fluid_data_scaler.inverse_transform(fluid_data_norm_coarse)
-        fluid_data_coarse = self.__CalcMeshData(fluid_data_coarse)
+        fluid_data_coarse, _ = self.__CalcMeshData(fluid_data_coarse)
 
         # Identify refinement locations
         fluid_data_norm = self._fluid_data_scaler.transform(fluid_data_coarse)
@@ -523,6 +540,17 @@ class SU2TableGenerator_NICFD:
         RefPoints=np.loadtxt(LoadRef,skiprows=1,usecols=(0,1),delimiter=",",dtype=float)
         mask = np.isfinite(RefPoints).all(axis=1) 
         RefPoints_clean=RefPoints[mask, :]  
+
+        if len(sat_curve_norm_clipped)==2:
+            sat_curve_norm_clipped_merged=np.vstack((sat_curve_norm_clipped[0],sat_curve_norm_clipped[1]))
+            #sat_curve_clipped_merged=np.vstack((sat_curve_clipped[0],sat_curve_clipped[1]))
+        elif len(sat_curve_norm_clipped)==1:
+            sat_curve_norm_clipped_merged=np.copy(sat_curve_norm_clipped[0])
+            #sat_curve_clipped_merged=np.copy(sat_curve_clipped[0])
+        else:
+            sat_curve_norm_clipped_merged=np.copy(sat_curve_norm)
+            #sat_curve_clipped_merged=np.copy(sat_curve)
+
         ix_ref_TH_transf, ix_ref_TH_transf_add, ix_ref_TH_transf_add_sat=self.__ApplyRefinement_exp(fluid_data_coarse, RefPoints_clean, sat_curve_clipped)
 
         # Regenerate table including refinement locations
@@ -530,13 +558,6 @@ class SU2TableGenerator_NICFD:
         ix_ref=np.union1d(ix_ref_user,ix_ref_TH_transf).astype(np.int64)
         rhoe_norm_ref = rhoe_norm_mesh[ix_ref, :]
         rhoe_norm_ref_add = rhoe_norm_mesh[ix_ref_TH_transf_add, :]
-        
-        if len(sat_curve_norm_clipped)==2:
-            sat_curve_norm_clipped_merged=np.vstack(sat_curve_norm_clipped[0],sat_curve_norm_clipped[1])
-        elif len(sat_curve_norm_clipped)==1:
-            sat_curve_norm_clipped_merged=np.copy(sat_curve_norm_clipped[0])
-        else:
-            sat_curve_norm_clipped_merged=np.copy(sat_curve_norm)
 
         sat_curve_ref= sat_curve_norm_clipped_merged[ix_ref_TH_transf_add_sat, :]
 
@@ -547,27 +568,39 @@ class SU2TableGenerator_NICFD:
         fluid_data_norm_ref[:, EntropicVars.Density.value] = rhoe_mesh_norm[:,0]
         fluid_data_norm_ref[:, EntropicVars.Energy.value] = rhoe_mesh_norm[:,1]
         fluid_data_ref = self._fluid_data_scaler.inverse_transform(fluid_data_norm_ref)
-        fluid_data_ref = self.__CalcMeshData(fluid_data_ref)
+
+        fluid_data_ref, i_None = self.__CalcMeshData(fluid_data_ref)
+        fluid_data_norm_ref = self._fluid_data_scaler.transform(fluid_data_ref)
+
+        # Save in a mask the index of the invalid nodes 
+        valid_mask = np.ones(len(rhoe_mesh_norm), dtype=bool)
+        valid_mask[i_None] = False
 
         # Create triangulation of filtered thermodynamic state data
-        #fluid_data_norm_ref = self._fluid_data_scaler.transform(fluid_data_ref)
+        
         #DT = Delaunay(fluid_data_norm_ref[:, [EntropicVars.Density.value,EntropicVars.Energy.value]])
 
         # Extract triangulation, hull nodes, and table data
         #Tria = DT.simplices 
+        if Tria.max() + 1!=len(fluid_data_ref ):
+            print("WARNING: COOLPROP HAS FAILED IN AT LEAST ONE NODE, NEW TRIANGULATION WILL BE COMPUTED")
+            Tria=self.remove_invalid_nodes_from_mesh(Tria, valid_mask, rhoe_mesh_norm)
+
         HullNodes = concave_hull_indexes(fluid_data_norm_ref[:, [EntropicVars.Density.value,EntropicVars.Energy.value]])
 
         self._table_nodes = fluid_data_ref 
         self._table_connectivity = Tria 
         self._table_hullnodes = HullNodes
         
+        """
         if self._table_connectivity.max() + 1!=len(self._table_nodes):
-            print("WARNING: COOLPROP HAS FAILED IN AT LEAST ONE NODE, TRIANGULATION NOT CONSISTENT")
+            
             print("len(rhoe_mesh_norm) =", len(rhoe_mesh_norm))
             print("len(self._table_nodes) =", len(self._table_nodes))
             print("len(fluid_data_ref) =", len(fluid_data_ref[:,0]))
             print("conn max =", self._table_connectivity.max())
             print("expected npts from conn =", self._table_connectivity.max() + 1)
+        """
 
         # Add static enthalpy and the specific heat at constant volume
         self.table_vars.append("Enthalpy")
@@ -869,14 +902,14 @@ class SU2TableGenerator_NICFD:
 
         if len(sat_curve_clipped)!=0:
             for i in range(len(sat_curve_clipped)):
-                #ix_ref_add_sat_clipped=np.array([],dtype=np.int64)
                 sat_curve=sat_curve_clipped[i]
                 ints = self.__polyline_intersections(ref_points, sat_curve)
                 ix_sat = [d["iA"] + (d["tA"] > 0.5) for d in ints]
 
                 ix = np.argwhere(np.logical_and(np.logical_and(sat_curve[:,0]>=ref_points[ix_sat[0],0]*0.99, sat_curve[:,0]<=1.01*ref_points[ix_sat[0],0]), \
                                     np.logical_and(sat_curve[:,1]>=ref_points[ix_sat[0],1]*0.99, sat_curve[:,1]<=1.01*ref_points[ix_sat[0],1])))[:,0]
-                        
+                if i>0:
+                    ix+=len(sat_curve_clipped[i-1])       
                 ix_ref_add_sat=np.append(ix_ref_add_sat,ix)
         """
         ints = self.__polyline_intersections(ref_points, sat_curve)
@@ -1091,12 +1124,14 @@ class SU2TableGenerator_NICFD:
         RefMaxCell_finer=self._finer_refined_cell_size
         RefMaxCell_finer_sat=self._finer_sat_refined_cell_size
         RefRadius=self._refinement_radius
+        RefRadiusSatCurve=self._refinement_radius_sat_curve
         SatCurveDiscr=self._Sat_Curve_Discretization
 
         output_file.write("%s%.9f \n" %("Maximum refined cell size=",RefMaxCell))
         output_file.write("%s%.9f \n" %("Maximum finer refined cell size=",RefMaxCell_finer))
         output_file.write("%s%.9f \n" %("Maximum refined cell size near saturated curve=",RefMaxCell_finer_sat))
         output_file.write("%s%.9f \n" %("Refinment radius=",RefRadius))
+        output_file.write("%s%.9f \n" %("Refinment radius for points along sat curve=",RefRadiusSatCurve))
         output_file.write("%s%.9f \n" %("Multiplier that defines the saturation curve discretization=",SatCurveDiscr))
 
         # Local refinment
