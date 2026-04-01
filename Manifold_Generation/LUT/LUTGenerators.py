@@ -65,9 +65,9 @@ class SU2TableGenerator_NICFD:
 
     _refined_cell_size:float = 2e-3 #2.5e-3#1.5e-3   # Table level refined cell size. # old value is 5e-3, standard for adapted ref 2e-3
     _finer_refined_cell_size:float = 2e-4 # Refinment for finer zones
-    _finer_sat_refined_cell_size:float = 7.5e-5 # Refinment for finer zones near saturation curve
+    _finer_sat_refined_cell_size:float = 5e-5 # Refinment for finer zones near saturation curve
     _refinement_radius:float = 4e-2 #5e-2     # Table level radius within which refinement is applied. # original value is 1e-2
-    _refinement_radius_sat_curve:float = 1.5e-3 #5e-2  # Table level radius within which refinement is applied for the points along the sat curve. 
+    _refinement_radius_sat_curve:float = 7.5e-3 #5e-2  # Table level radius within which refinement is applied for the points along the sat curve. 
 
     _LowMult_Density:float=0.9985  # Adaptive refinment density lower bound is computed as _LowMult_Density*Density[i]
     _HighMult_Density:float=1.015 # Adaptive refinment density upper bound is computed as _HighMult_Density*Density[i]
@@ -79,7 +79,7 @@ class SU2TableGenerator_NICFD:
     _HighMult_Density_ref:float=1.1 # Adaptive refinment density upper bound is computed as _HighMult_Density_ref*Density[i] when density is lower than _Density_ref_value
 
     _Density_ref_value:float=5 # Density value below which _LowMult_Density_ref and _HighMult_Density_ref are employed as multiplier
-    _Density_finer_ref_value:float=8 # Density value below the finer refinment is activated
+    _Density_finer_ref_value:float=9 # Density value below the finer refinment is activated
     _Sat_Curve_Discretization:float=0.5 # Define the saturation curve spacing as _Sat_Curve_Discretization*_base_cell_size
     ######## END USER-INPUT ########
 
